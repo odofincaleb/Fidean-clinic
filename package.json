@@ -1,0 +1,37 @@
+{
+  "name": "fidean-clinic-saas",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "test": "vitest run",
+    "build": "tsc --noEmit",
+    "start": "node --enable-source-maps dist/server.js",
+    "seed": "tsx src/scripts/seed.ts",
+    "db:schema": "psql $DATABASE_URL -f docs/schema.sql"
+  },
+  "dependencies": {
+    "@fastify/cors": "latest",
+    "@fastify/multipart": "^10.1.2",
+    "@fastify/static": "latest",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "fastify": "latest",
+    "jsonwebtoken": "^9.0.3",
+    "nanoid": "latest",
+    "nodemailer": "^10.0.10",
+    "pg": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "latest",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

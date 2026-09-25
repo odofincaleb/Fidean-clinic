@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fidean Clinic SaaS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
+  <link rel="stylesheet" href="/style.css?v=44" />
+<script src="/mobile-fix.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <!-- Super Admin Login — / -->
+    <section class="auth-page" id="super-admin-view">
+      <div class="auth-card-centered">
+        <div class="brand-lockup" style="justify-content:center;margin-bottom:24px">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span style="font-size:1.2rem">Fidean Clinic OS</span>
+        </div>
+        <div class="auth-toggle">
+          <button type="button" id="show-login" class="ghost active">Admin login</button>
+        </div>
+        <p id="auth-error" class="auth-error" hidden></p>
+        <form id="login-form" class="auth-form">
+          <input name="email" type="email" placeholder="Email" required />
+          <input name="password" type="password" placeholder="Password" required minlength="8" />
+          <button type="submit">Login</button>
+        </form>
+        <p class="security-note" style="margin-top:16px">Protected pilot access</p>
+      </div>
+    </section>
+
+    <!-- Patient Activation — /activate?token=xxx -->
+    <section class="auth-page" id="activate-view" hidden>
+      <div class="auth-card-centered">
+        <div class="brand-lockup" style="justify-content:center;margin-bottom:24px">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span style="font-size:1.2rem">Patient Activation</span>
+        </div>
+        <p id="activate-error" class="auth-error" hidden></p>
+        <p id="activate-success" style="color:#16a34a;font-weight:700;display:none">✅ Account activated! Redirecting to login...</p>
+        <form id="activate-form" class="auth-form">
+          <input name="password" type="password" placeholder="Create password (min 8 chars)" required minlength="8" />
+          <input name="confirm" type="password" placeholder="Confirm password" required />
+          <button type="submit">Set password & activate</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Register / Marketing — /register -->
+    <section class="register-page hero" id="register-view" hidden>
+      <div class="hero-copy">
+        <div class="brand-lockup">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Fidean Clinic OS</span>
+        </div>
+        <p class="kicker">Modern clinic operations platform</p>
+        <h1>Run multi-branch clinics from one intelligent command centre.</h1>
+        <p class="hero-subtitle">A secure, offline-ready clinic workspace for appointments, patients, clinical notes, billing, notifications, and patient portal access.</p>
+        <div class="hero-metrics" aria-label="Platform highlights">
+          <article><strong>17</strong><span>clinical modules</span></article>
+          <article><strong>Offline</strong><span>sync-ready PWA</span></article>
+          <article><strong>RBAC</strong><span>staff + patient auth</span></article>
+        </div>
+      </div>
+      <div class="auth-card">
+        <h2 style="margin:0 0 12px;text-align:center">Register your clinic</h2>
+        <p id="register-error" class="auth-error" hidden></p>
+        <form id="register-form" class="auth-form">
+          <input name="name" placeholder="Clinic name" required />
+          <input name="slug" placeholder="slug-like-this" required title="Lowercase letters, numbers, and hyphens only" />
+          <input name="displayName" placeholder="Your name" />
+          <input name="email" type="email" placeholder="Email" required />
+          <input name="password" type="password" placeholder="Password (min 8)" required minlength="8" />
+          <button type="submit">Register clinic</button>
+        </form>
+        <p class="hint" style="text-align:center;margin-top:12px">Already have an account? <a href="/" id="login-link-from-register">Admin login</a></p>
+        <p class="security-note">Protected pilot access · Staff JWT · Patient JWT</p>
+      </div>
+    </section>
+
+    <!-- Tenant Portal — /<slug> -->
+    <section class="auth-page" id="tenant-view" hidden>
+      <div class="auth-card-centered" id="tenant-auth-card">
+        <div class="brand-lockup" style="justify-content:center;margin-bottom:24px">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span style="font-size:1.2rem" id="tenant-name">Clinic Portal</span>
+        </div>
+        <p id="tenant-error" class="auth-error" hidden></p>
+        <div class="auth-toggle">
+          <button type="button" id="show-tenant-staff-login" class="ghost active">Staff login</button>
+          <button type="button" id="show-tenant-patient-login" class="ghost">Patient login</button>
+        </div>
+        <form id="tenant-login-form" class="auth-form">
+          <input name="email" type="email" placeholder="Staff email" required />
+          <input name="password" type="password" placeholder="Password" required minlength="8" />
+          <button type="submit">Login</button>
+        </form>
+        <form id="tenant-patient-login-form" class="auth-form" hidden>
+          <input name="email" type="email" placeholder="Patient email" required />
+          <input name="password" type="password" placeholder="Password" required minlength="8" />
+          <button type="submit">Patient login</button>
+        </form>
+        <p class="security-note" style="margin-top:16px">Protected pilot access</p>
+      </div>
+    </section>
+
+    <div id="dashboard" class="app-workspace" hidden>
+  <!-- Super Admin workspace -->
+  <div id="super-admin-workspace" hidden>
+    <header class="app-topbar">
+      <div class="topbar-brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <strong>Fidean Clinic OS</strong>
+          <small>Super Admin</small>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span class="role-badge" id="sa-role-badge">Super Admin</span>
+        <button id="sa-logout" type="button" class="secondary-action">Log out</button>
+      </div>
+    </header>
+    <div class="sa-content" style="padding:24px;max-width:1200px;margin:0 auto">
+      <h2>All Clinics</h2>
+      <div id="sa-tenant-grid" class="cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))"></div>
+    </div>
+  </div>
+      <header class="app-topbar">
+        <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle menu">☰</button>
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        <div class="topbar-brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Fidean Clinic OS</strong>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <span class="status-pill"><span class="status-dot"></span> Live pilot</span>
+          <span class="role-badge" id="role-badge"></span>
+          <button id="dashboard-logout" type="button" class="secondary-action">Log out</button>
+        </div>
+      </header>
+      <div class="workspace-grid">
+        <nav class="sidebar" role="tablist" aria-label="Clinic modules">
+          <div class="sidebar-section">Menu</div>
+          <button class="sidebar-item active" data-tab="overview"><span class="icon">📊</span>Overview</button>
+          <button class="sidebar-item" data-tab="calendar"><span class="icon">📅</span>Calendar</button>
+          <button class="sidebar-item" data-tab="appointments"><span class="icon">🩺</span>Appointments</button>
+          <button class="sidebar-item" data-tab="patients"><span class="icon">👥</span>Patients</button>
+          <button class="sidebar-item" data-tab="add-patient"><span class="icon">➕</span>Add Patient</button>
+          <button class="sidebar-item" data-tab="branches"><span class="icon">🏢</span>Branches</button>
+          <button class="sidebar-item" data-tab="staff"><span class="icon">👤</span>Staff</button>
+          <button class="sidebar-item" data-tab="services"><span class="icon">🧬</span>Services</button>
+          <button class="sidebar-item" data-tab="schedules"><span class="icon">📋</span>Schedules</button>
+          <button class="sidebar-item" data-tab="reports"><span class="icon">📊</span>Reports</button>
+          <div class="sidebar-section">Clinical</div>
+          <button class="sidebar-item" data-tab="encounters"><span class="icon">📝</span>Encounters</button>
+          <button class="sidebar-item" data-tab="prescriptions"><span class="icon">💊</span>Prescriptions</button>
+          <button class="sidebar-item" data-tab="documents"><span class="icon">📄</span>Documents</button>
+          <div class="sidebar-section">Operations</div>
+          <button class="sidebar-item" data-tab="billing"><span class="icon">💰</span>Billing</button>
+          <button class="sidebar-item" data-tab="patient-portal"><span class="icon">🔗</span>Patient Portal</button>
+          <button class="sidebar-item" data-tab="notifications"><span class="icon">🔔</span>Notifications</button>
+          <div class="sidebar-section">Admin</div>
+          <button class="sidebar-item" data-tab="messaging"><span class="icon">💬</span>Messaging</button>
+          <button class="sidebar-item" data-tab="audit-logs"><span class="icon">📜</span>Audit Logs</button>
+          <button class="sidebar-item" data-tab="ledger"><span class="icon">📒</span>Ledger</button>
+          <button class="sidebar-item" data-tab="settings"><span class="icon">⚙️</span>Settings</button>
+          <button class="sidebar-item" data-tab="inventory"><span class="icon">📦</span>Inventory</button>
+          <div class="sidebar-section">System</div>
+          <button class="sidebar-item" data-tab="offline-sync"><span class="icon">🔄</span>Offline Sync</button>
+          <button class="sidebar-item" data-tab="system-status"><span class="icon">📡</span>System Status</button>
+        </nav>
+                <div class="workspace-content">
+          <section class="panel tab-panel active" id="overview">
+            <div class="dashboard" id="dashboard-view">
+              <header class="dash-header">
+                <h2>Dashboard</h2>
+                <p class="dash-subtitle">Today's clinic overview</p>
+              </header>
+
+              <div class="dash-metrics" id="dash-metrics"></div>
+
+              <div class="dash-cols">
+                <div class="dash-card" id="dash-appointments">
+                  <div class="dash-card-header">
+                    <span class="dash-card-title">Today's Appointments</span>
+                    <span class="dash-badge" id="today-count">0</span>
+                  </div>
+                  <div class="dash-card-body" id="dash-appointments-body">
+                    <p class="dash-empty">Loading appointments...</p>
+                  </div>
+                </div>
+                <div class="dash-card" id="dash-activity">
+                  <div class="dash-card-header">
+                    <span class="dash-card-title">Recent Encounters</span>
+                    <span class="dash-badge" id="encounter-count">0</span>
+                  </div>
+                  <div class="dash-card-body" id="dash-activity-body">
+                    <p class="dash-empty">Loading encounters...</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dash-card" id="dash-pending">
+                <div class="dash-card-header">
+                  <span class="dash-card-title">Pending Items</span>
+                </div>
+                <div class="dash-card-body" id="dash-pending-body">
+                  <p class="dash-empty">Loading...</p>
+                </div>
+              </div>
+
+              <div class="dash-stats" id="dash-stats"></div>
+            </div>
+          </section>
+      <section class="panel tab-panel" id="branches">
+        <h2>Branches</h2>
+        <form id="branch-form" class="form">
+          <input name="name" placeholder="Branch name" required />
+          <input name="address" placeholder="Address" />
+          <button type="submit">Add branch</button>
+        </form>
+        <div id="branch-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="add-patient">
+        <h2>Add Patient</h2>
+        <p class="panel-subtitle">Create a single patient record or bulk-import an existing clinic patient list.</p>
+        <form id="patient-form" class="form patient-form">
+          <input name="clinicPatientId" placeholder="Clinic Patient ID" />
+          <input name="firstName" placeholder="First name *" required />
+          <input name="lastName" placeholder="Last name" />
+          <input name="email" type="email" placeholder="Email address" />
+          <input name="phone" placeholder="Phone *" required />
+          <input name="altPhone" placeholder="Alternate phone" />
+          <input name="dob" type="date" placeholder="Date of birth" />
+          <select name="gender">
+            <option value="">Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          <select name="bloodGroup">
+            <option value="">Blood group</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+          </select>
+          <input name="address" placeholder="Address" />
+          <input name="city" placeholder="City" />
+          <input name="state" placeholder="State" />
+          <textarea name="medicalHistory" placeholder="Medical history (allergies, conditions, medications...)"></textarea>
+          <button type="submit">Add patient</button>
+        </form>
+        <p id="patient-form-result" class="hint"></p>
+        <section class="bulk-import-card" id="patient-import-card">
+          <div>
+            <h3>Bulk import existing patients</h3>
+            <p>Upload CSV or Excel, map your clinic columns, then import. Use the sample file to match Patient ID, names, phone, email, gender, blood group, address, and medical history.</p>
+          </div>
+          <div class="bulk-actions">
+            <button type="button" id="download-patient-template">Download sample CSV</button>
+            <button type="button" id="download-patient-xlsx-template">Download sample Excel</button>
+            <input type="file" id="patient-import-file" accept=".csv,.xlsx,.xls" />
+          </div>
+          <div id="patient-import-mapping" class="import-mapping" hidden></div>
+          <div id="patient-import-preview" class="import-preview"></div>
+          <p id="patient-import-result" class="hint"></p>
+        </section>
+      </section>
+      <section class="panel tab-panel" id="patients">
+        <h2>Patients</h2>
+        <div class="patient-search"><input id="patient-search-input" type="text" placeholder="Search patients by name, clinic ID, phone, code..." /></div>
+        <div id="patient-list" class="cards"></div>
+        <div id="patient-detail" class="detail-panel" hidden>
+          <button class="back-btn" id="patient-detail-back">← Back to patients</button>
+          <div class="detail-header" id="patient-detail-header"></div>
+          <nav class="detail-tabs" id="patient-detail-tabs">
+            <button class="detail-tab active" data-subtab="info">Info</button>
+            <button class="detail-tab" data-subtab="encounters">Encounters</button>
+            <button class="detail-tab" data-subtab="prescriptions">Prescriptions</button>
+            <button class="detail-tab" data-subtab="invoices">Invoices</button>
+            <button class="detail-tab" data-subtab="documents">Documents</button>
+            <button class="detail-tab" data-subtab="hmo">HMO</button>
+          </nav>
+          <div class="detail-body" id="patient-detail-body"></div>
+        </div>
+      </section>
+      <section class="panel tab-panel" id="appointments">
+        <h2>Appointments</h2>
+        <form id="appointment-form" class="form">
+          <label>Branch <select name="branchId" required></select></label>
+          <label>Patient <div class="patient-ac" id="appointment-patient-ac"></div></label>
+          <label>Doctor <select name="doctorMemberId"><option value="">No doctor</option></select></label>
+          <label>Services (hold Ctrl to select multiple) <select name="serviceName" id="appointment-service-select" multiple required style="min-height:80px"></select></label>
+          <label>Date & time <input name="startsAt" type="datetime-local" required /></label>
+          <button type="submit">Book appointment</button>
+        </form>
+        <p id="appointment-error" class="hint"></p>
+        <form id="availability-form" class="form">
+          <select name="branchId" required></select>
+          <select name="doctorMemberId" required></select>
+          <input name="date" type="date" required />
+          <button type="submit">Load availability</button>
+        </form>
+        <div id="availability-slots" class="cards"></div>
+        <div id="appointment-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="staff">
+        <h2>Staff</h2>
+        <form id="member-form" class="form staff-form">
+          <label>Email <input name="email" type="email" placeholder="Email" required /></label>
+          <label>Display name <input name="displayName" placeholder="Full name" required /></label>
+          <label>Phone <input name="phone" placeholder="Phone number" /></label>
+          <label>Role <select name="role">
+            <option value="">Select role</option>
+            <option value="doctor">Doctor</option>
+            <option value="receptionist">Receptionist</option>
+            <option value="nurse">Nurse</option>
+            <option value="branch_manager">Branch Manager</option>
+            <option value="accountant">Accountant</option>
+            <option value="store_manager">Store Manager</option>
+            <option value="admin">Admin</option>
+          </select></label>
+          <label>Specialization <select name="specialization" id="specialization-select">
+            <option value="">None</option>
+            <option value="general">General Practice</option>
+            <option value="dentistry">Dentistry</option>
+            <option value="cardiology">Cardiology</option>
+            <option value="pediatrics">Pediatrics</option>
+            <option value="orthopedics">Orthopedics</option>
+            <option value="dermatology">Dermatology</option>
+            <option value="ophthalmology">Ophthalmology</option>
+            <option value="neurology">Neurology</option>
+            <option value="psychiatry">Psychiatry</option>
+            <option value="obgyn">OB/GYN</option>
+            <option value="radiology">Radiology</option>
+          </select></label>
+          <label>Qualifications <input name="qualifications" placeholder="e.g. MBBS, MD" /></label>
+          <label>Password <input name="password" type="password" placeholder="Min 8 chars" /><small id="staff-pw-hint" style="display:block;color:var(--text-tertiary);font-size:11px;margin-top:2px">Leave blank to send invite email instead</small></label>
+          <label>License # <input name="licenseNumber" placeholder="License number" /></label>
+          <div class="full-row">
+            <button type="submit" id="staff-submit-btn">Create Staff</button>
+            <button type="button" id="staff-reset-pw" style="display:none;background:var(--warning);color:#fff">Reset password</button>
+          </div>
+        </form>
+        <div id="member-list" class="cards"></div>
+        <div id="staff-detail" class="detail-panel" hidden>
+          <button class="back-btn" id="staff-detail-back">← Back to staff</button>
+          <div class="detail-header" id="staff-detail-header"></div>
+          <div class="detail-body" id="staff-detail-body"></div>
+        </div>
+      </section>
+      <section class="panel tab-panel" id="services">
+        <h2>Services</h2>
+        <form id="service-form" class="form">
+          <label>Service name <input name="name" placeholder="e.g. Consultation" required /></label>
+          <label>Duration (min) <input name="durationMinutes" type="number" value="30" min="5" /></label>
+          <label>Price (₦) <input name="price" type="number" value="0" min="0" placeholder="Amount in Naira" /></label>
+          <button type="submit">Add service</button>
+        </form>
+        <div id="service-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="calendar">
+        <h2>Calendar</h2>
+        <form id="calendar-filter" class="form">
+          <select name="branchId"><option value="">All branches</option></select>
+          <select name="doctorMemberId"><option value="">All doctors</option></select>
+          <select name="status">
+            <option value="">All statuses</option>
+            <option value="requested">requested</option>
+            <option value="confirmed">confirmed</option>
+            <option value="checked_in">checked_in</option>
+            <option value="completed">completed</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+          <input name="from" type="date" />
+          <input name="to" type="date" />
+          <button type="submit">Filter</button>
+        </form>
+        <div id="calendar-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="schedules">
+              <h2>Schedules</h2>
+              <div class="schedule-layout">
+                <div class="schedule-form-col">
+                  <form id="schedule-form" class="form">
+                    <label>Branch <select name="branchId" required></select></label>
+                    <label>Doctor <select name="doctorMemberId" required></select></label>
+                    <label>Day <select name="weekday">
+                      <option value="1">Monday</option>
+                      <option value="2">Tuesday</option>
+                      <option value="3">Wednesday</option>
+                      <option value="4">Thursday</option>
+                      <option value="5">Friday</option>
+                      <option value="0">Sunday</option>
+                      <option value="6">Saturday</option>
+                    </select></label>
+                    <label>Start time <input name="startsAt" type="time" value="09:00" required /></label>
+                    <label>End time <input name="endsAt" type="time" value="17:00" required /></label>
+                    <label>Slot (min) <input name="slotMinutes" type="number" value="30" min="5" /></label>
+                    <button type="submit">Add schedule</button>
+                  </form>
+                </div>
+                <div class="schedule-cards-col">
+                  <div id="schedule-list" class="cards"></div>
+                </div>
+              </div>
+            </section>
+      <section class="panel tab-panel" id="encounters">
+        <h2>Encounters</h2>
+        <form id="encounter-form" class="form">
+          <label>Branch <select name="branchId" required></select></label>
+          <label>Patient <div class="patient-ac" id="encounter-patient-ac"></div></label>
+          <label>Appointment <select name="appointmentId"><option value="">Walk-in / no appointment</option></select></label>
+          <input name="reason" placeholder="Reason" />
+          <input name="diagnosis" placeholder="Diagnosis" />
+          <input name="clinicalNotes" placeholder="Clinical notes" />
+          <input name="bloodPressure" placeholder="BP" />
+          <label>Temp (°C) <input name="temperatureC" type="number" step="0.1" placeholder="e.g. 37.2" /></label>
+          <button type="submit">Open encounter</button>
+        </form>
+        <div class="specialist-diagram-container" id="encounter-diagram">
+          <div class="specialist-diagram-toggle">
+            <label>Specialist Canvas:</label>
+            <select id="diagram-type" class="diagram-type-select">
+              <option value="">None (general encounter)</option>
+              <option value="dental">Dental — Adult Universal (#1–#32)</option>
+              <option value="dermatology">Dermatology — Body Surface Map</option>
+              <option value="cardiology">Cardiology — AHA 17-Segment</option>
+              <option value="" disabled>Dental — Adult FDI (11–48) coming next</option>
+              <option value="" disabled>Neurology — Dermatome / ASIA Map coming next</option>
+              <option value="" disabled>Abdomen — 9-Region Map coming next</option>
+            </select>
+          </div>
+          <div id="diagram-render-area"></div>
+        </div>
+        <div class="referral-area" id="encounter-referral-area" hidden>
+          <h4>Referral / Case Consultation</h4>
+          <form id="referral-form" class="form referral-form">
+            <select name="referralType" required>
+              <option value="inhouse_specialist">Refer to in-house specialist</option>
+              <option value="external_clinic">Refer to external clinic</option>
+            </select>
+            <div id="referral-doctor-field">
+              <select name="toDoctorMemberId"><option value="">Select specialist doctor...</option></select>
+            </div>
+            <div id="referral-clinic-field" hidden>
+              <input name="externalClinicName" placeholder="Clinic name" />
+              <input name="externalClinicContact" placeholder="Clinic contact" />
+            </div>
+            <input name="specialty" placeholder="Specialty / reason" />
+            <textarea name="reason" placeholder="Referral reason" rows="2" required></textarea>
+            <textarea name="notes" placeholder="Additional notes" rows="2"></textarea>
+            <button type="submit">Create referral</button>
+          </form>
+        </div>
+        <div id="referral-list" class="cards"></div>
+        <div id="encounter-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="prescriptions">
+        <h2>Prescriptions</h2>
+        <form id="prescription-form" class="form">
+          <div class="patient-ac" id="prescription-patient-ac"></div>
+          <select name="encounterId"><option value="">No encounter (standalone)</option></select>
+          <input name="medication" placeholder="Medication" required />
+          <input name="dosage" placeholder="Dosage" />
+          <input name="frequency" placeholder="Frequency" />
+          <input name="duration" placeholder="Duration" />
+          <input name="instructions" placeholder="Instructions" />
+          <button type="submit">Save draft</button>
+        </form>
+        <div id="prescription-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="billing">
+        <h2>Billing</h2>
+        <form id="invoice-form" class="form">
+          <label>Branch <select name="branchId" required></select></label>
+          <label>Patient <div class="patient-ac" id="invoice-patient-ac"></div></label>
+          <label>HMO <select name="hmoInsuranceId" id="invoice-hmo-select"><option value="">No HMO</option></select></label>
+          <label>HMO covers <span id="hmo-coverage-display" style="font-weight:700;color:#16a34a">₦0</span></label>
+          <label>Appointment <select name="appointmentId"><option value="">No appointment</option></select></label>
+          <label>Encounter <select name="encounterId"><option value="">No encounter</option></select></label>
+          <label>Item / service <input name="description" placeholder="e.g. Consultation" required id="inv-desc" /></label>
+          <label>Qty <input name="quantity" type="number" value="1" min="1" /></label>
+          <label>Unit price (₦) <input name="unitPrice" type="number" value="0" min="0" placeholder="e.g. 5000" /></label>
+          <div style="position:relative;margin-top:-4px">
+            <small style="color:var(--text-tertiary)">Or select from inventory:</small>
+            <input type="text" id="inv-inv-search" placeholder="Search drug / device..." style="font-size:13px;width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:8px" />
+            <div id="inv-inv-results" style="display:none;position:absolute;background:#fff;border:1px solid var(--border);border-radius:8px;max-height:150px;overflow:auto;z-index:10;width:100%;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+          </div>
+          <button type="submit">Create invoice</button>
+        </form>
+        <p id="billing-error" class="hint"></p>
+        <div id="invoice-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="documents">
+        <h2>Documents</h2>
+        <form id="document-form" class="form">
+          <div class="patient-ac" id="document-patient-ac"></div>
+          <select name="encounterId"><option value="">No encounter</option></select>
+          <input name="title" placeholder="Title" required />
+          <select name="documentType">
+            <option value="report">report</option>
+            <option value="scan">scan</option>
+            <option value="lab">lab</option>
+            <option value="consent">consent</option>
+            <option value="other">other</option>
+          </select>
+          <input name="fileUrl" placeholder="File URL (external link)" />
+          <input name="file" type="file" id="document-file-input" style="font-size:13px" />
+          <input name="notes" placeholder="Notes" />
+          <button type="submit">Add document</button>
+        </form>
+        <div id="document-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="patient-portal">
+        <h2>Patient Portal</h2>
+        <form id="patient-invite-form" class="form">
+          <div class="patient-ac" id="patient-invite-ac"></div>
+          <input name="email" type="email" placeholder="Patient email" required />
+          <button type="submit">Invite patient</button>
+        </form>
+        <p id="activation-token" class="hint"></p>
+        <div class="form" style="margin-top:16px">
+          <button type="button" id="bulk-invite-btn" class="tab" style="background:var(--purple-soft);color:var(--purple-strong);border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:800;font-size:.85rem">Bulk invite patients with email</button>
+          <p class="hint" id="bulk-invite-result"></p>
+        </div>
+        <div id="patient-account-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="notifications">
+        <h2>Notifications</h2>
+        <form id="notification-filter" class="form">
+          <select name="status">
+            <option value="">All statuses</option>
+            <option value="queued">queued</option>
+            <option value="sent">sent</option>
+            <option value="failed">failed</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+          <select name="type">
+            <option value="">All types</option>
+            <option value="patient_portal_invite">patient_portal_invite</option>
+            <option value="appointment_created">appointment_created</option>
+            <option value="prescription_issued">prescription_issued</option>
+            <option value="invoice_issued">invoice_issued</option>
+            <option value="invoice_payment_received">invoice_payment_received</option>
+          </select>
+          <button type="submit">Filter</button>
+        </form>
+        <form id="notification-form" class="form">
+          <select name="channel">
+            <option value="email">email</option>
+            <option value="sms">sms</option>
+            <option value="whatsapp">whatsapp</option>
+          </select>
+          <select name="type">
+            <option value="appointment_reminder">appointment_reminder</option>
+            <option value="patient_portal_invite">patient_portal_invite</option>
+            <option value="invoice_issued">invoice_issued</option>
+          </select>
+          <input name="recipient" placeholder="Recipient" required />
+          <input name="subject" placeholder="Subject" />
+          <input name="body" placeholder="Body" required />
+          <button type="submit">Queue notification</button>
+        </form>
+        <div id="notification-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="audit-logs">
+        <h2>Audit Logs</h2>
+        <form id="audit-filter" class="form">
+          <input name="action" placeholder="Action" />
+          <input name="objectType" placeholder="Object type" />
+          <button type="submit">Filter</button>
+        </form>
+        <div id="audit-list" class="cards"></div>
+      </section>
+      <p id="offline-banner" class="offline-banner" hidden>This device has unsynced clinic data</p>
+      <p id="offline-notice" class="hint"></p>
+      <section class="panel tab-panel" id="system-status">
+        <h2>System Status</h2>
+        <div id="system-status-view" class="cards"></div>
+      </section>
+          <section class="panel tab-panel" id="offline-sync">
+            <h2>Offline Sync</h2>
+                        <div class="grid">
+                          <article class="stat"><strong id="offline-connection">Unknown</strong><span>Connection</span></article>
+                          <article class="stat"><strong id="offline-pending">0</strong><span>Pending</span></article>
+                          <article class="stat"><strong id="offline-failed">0</strong><span>Failed / conflict</span></article>
+                          <article class="stat"><strong id="offline-last-sync">Never</strong><span>Last sync</span></article>
+                        </div>
+                        <button id="sync-now">Sync now</button>
+                        <button id="clear-pending">Clear pending</button>
+                        <div id="offline-log" class="cards"></div>
+                      </section>
+                      <section class="panel tab-panel" id="system-status">
+                        <h2>System Status</h2>
+                        <div id="system-status-view" class="cards"></div>
+                      </section>
+                      <section class="panel tab-panel" id="ledger">
+                        <h2>Ledger</h2>
+                        <div class="topbar" style="border:none;margin-bottom:12px">
+                          <div class="topbar-right" style="gap:8px">
+                            <select id="ledger-type-filter"><option value="">All types</option><option value="invoice">Invoices</option><option value="payment">Payments</option></select>
+                            <input id="ledger-date-from" type="date" style="width:140px;font-size:12px" />
+                            <input id="ledger-date-to" type="date" style="width:140px;font-size:12px" />
+                            <button id="ledger-refresh" class="paystack-btn" style="padding:6px 14px;font-size:12px">Refresh</button>
+                          </div>
+                        </div>
+                        <div class="stats" id="ledger-summary" style="margin-bottom:12px"></div>
+                        <div id="ledger-list" class="cards"></div>
+                      </section>
+          <section class="panel tab-panel" id="messaging">
+        <h2>Staff Messaging</h2>
+        <form id="staff-message-form" class="form">
+          <select name="recipientMemberId" id="msg-recipient-select" required>
+            <option value="">Select recipient...</option>
+          </select>
+          <input name="subject" placeholder="Subject" />
+          <textarea name="body" placeholder="Message body" rows="3" required></textarea>
+          <button type="submit">Send message</button>
+        </form>
+        <div id="staff-message-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="inventory">
+        <h2>Inventory</h2>
+        <div class="mini-tabs" id="inventory-mini-tabs">
+          <button type="button" class="mini-tab active" data-inv-panel="inventory-dashboard">Dashboard</button>
+          <button type="button" class="mini-tab" data-inv-panel="inventory-products">Products</button>
+          <button type="button" class="mini-tab" data-inv-panel="inventory-stock-in">Stock In</button>
+          <button type="button" class="mini-tab" data-inv-panel="inventory-stock-out">Stock Out</button>
+          <button type="button" class="mini-tab" data-inv-panel="inventory-adjust">Adjust Stock</button>
+          <button type="button" class="mini-tab" data-inv-panel="inventory-suppliers">Suppliers</button>
+          <button type="button" class="mini-tab" data-inv-panel="inventory-reports">Reports</button>
+        </div>
+        <div id="inventory-dashboard" class="inventory-subpanel active">
+          <div class="dash-metrics" id="inventory-metrics"></div>
+          <div class="inventory-columns">
+            <section><h3>LOW STOCK</h3><div id="inventory-low-stock" class="cards"></div></section>
+            <section><h3>EXPIRING SOON</h3><div id="inventory-expiring" class="cards"></div></section>
+          </div>
+        </div>
+        <div id="inventory-products" class="inventory-subpanel">
+          <h3>Products</h3>
+          <form id="inventory-form" class="form">
+            <label>Item name <input name="name" placeholder="e.g. Paracetamol" required /></label>
+            <label>SKU <input name="sku" placeholder="Item code" /></label>
+            <label>Category <select name="category"><option value="Drug">Drug</option><option value="Consumable">Consumable</option><option value="Lab Item">Lab Item</option><option value="Other">Other</option></select></label>
+            <label>Unit <input name="unit" placeholder="tablet, bottle, box, vial" /></label>
+            <label>Reorder level <input name="reorderLevel" type="number" min="0" placeholder="Minimum stock" /></label>
+            <label>Cost price (₦) <input name="unitCost" type="number" min="0" placeholder="0" /></label>
+            <label>Selling price (₦) <input name="sellingPrice" type="number" min="0" placeholder="0" /></label>
+            <label>Status <select name="status"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+            <button type="submit">Add product</button>
+          </form>
+          <div id="inventory-list" class="inventory-grid"></div>
+        </div>
+        <div id="inventory-stock-in" class="inventory-subpanel">
+          <h3>Stock In / Purchase</h3>
+          <form id="inventory-stock-in-form" class="form">
+            <label>Item <select name="itemId" id="stock-in-item" required><option value="">Select item</option></select></label>
+            <label>Quantity <input name="quantity" type="number" min="1" placeholder="Qty received" required /></label>
+            <label>Supplier <select name="supplierId" id="stock-in-supplier"><option value="">Select supplier</option></select></label>
+            <label>Cost price (₦) <input name="costPrice" type="number" min="0" placeholder="0" /></label>
+            <label>Batch # <input name="batchNumber" placeholder="Batch number" /></label>
+            <label>Expiry <input name="expiryDate" type="date" /></label>
+            <label>Received <input name="receivedAt" type="date" /></label>
+            <button type="submit">Record stock in</button>
+          </form>
+        </div>
+        <div id="inventory-stock-out" class="inventory-subpanel">
+          <h3>Stock Out / Usage</h3>
+          <form id="inventory-stock-out-form" class="form">
+            <label>Item <select name="itemId" id="stock-out-item" required><option value="">Select item</option></select></label>
+            <label>Quantity <input name="quantity" type="number" min="1" placeholder="Qty out" required /></label>
+            <label>Type <select name="movementType"><option value="dispense">Pharmacy dispensing</option><option value="usage">Department usage</option></select></label>
+            <label>Reason <input name="reason" placeholder="e.g. patient prescription" /></label>
+            <label>Reference <input name="reference" placeholder="Patient / department" /></label>
+            <button type="submit">Record stock out</button>
+          </form>
+        </div>
+        <div id="inventory-adjust" class="inventory-subpanel">
+          <h3>Adjust Stock</h3>
+          <form id="inventory-adjust-form" class="form">
+            <label>Item <select name="itemId" id="adjust-item" required><option value="">Select item</option></select></label>
+            <label>Change <input name="quantity" type="number" placeholder="-4 or +3" required /></label>
+            <label>Reason <input name="reason" placeholder="e.g. stock count" required /></label>
+            <button type="submit">Record adjustment</button>
+          </form>
+        </div>
+        <div id="inventory-suppliers" class="inventory-subpanel">
+          <h3>Suppliers</h3>
+          <form id="supplier-form" class="form">
+            <label>Supplier name <input name="name" placeholder="e.g. MedPlus" required /></label>
+            <label>Phone <input name="phone" placeholder="Phone" /></label>
+            <label>Email <input name="email" type="email" placeholder="Email" /></label>
+            <button type="submit">Add supplier</button>
+          </form>
+          <div id="supplier-list" class="cards"></div>
+        </div>
+        <div id="inventory-reports" class="inventory-subpanel">
+          <h3>Reports</h3>
+          <div id="inventory-report-list" class="cards"></div>
+        </div>
+      </section>
+      <section class="panel tab-panel" id="settings">
+  <h2>Settings</h2>
+  <div class="cards">
+    <article class="card-rich">
+      <h3>🏥 Clinic Profile</h3>
+      <form id="settings-form" class="form settings-form">
+        <input name="clinicName" placeholder="Clinic name" />
+        <input name="clinicAddress" placeholder="Clinic address" />
+        <div class="logo-upload-area"><input type="file" id="logo-file-input" accept="image/*" class="logo-input" /><div class="logo-preview-wrap" id="logo-preview-wrap" hidden><img id="logo-preview-img" alt="Logo preview" /></div><input name="clinicLogoUrl" id="logo-data-url-input" placeholder="Logo will be uploaded as base64" readonly /></div>
+        <input name="brandPrimaryColor" type="color" value="#66f2ea" />
+        <input name="brandAccentColor" type="color" value="#3b82f6" />
+        <button type="submit">Save clinic profile</button>
+      </form>
+    </article>
+
+    <article class="card-rich">
+      <h3>💳 Paystack (Online Payments)</h3>
+      <p class="hint">Enter your Paystack live keys to accept card, transfer, and USSD payments from patients.</p>
+      <form class="form" id="paystack-form">
+        <input name="paystackPublicKey" placeholder="Public key (pk_live_xxxxxxxx)" />
+        <input name="paystackSecretKey" type="password" placeholder="Secret key (sk_live_xxxxxxxx)" />
+        <button type="submit">Save Paystack keys</button>
+      </form>
+    </article>
+
+    <article class="card-rich">
+      <h3>🏦 Bank Transfer</h3>
+      <p class="hint">Share these details with patients who prefer manual bank transfers.</p>
+      <form class="form" id="bank-form">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem">
+          <input type="checkbox" name="bankTransferEnabled" checked /> Enable bank transfer for patients
+        </label>
+        <input name="bankName" placeholder="Bank name (e.g. GTBank)" />
+        <input name="bankAccountName" placeholder="Account name" />
+        <input name="bankAccountNumber" placeholder="Account number" />
+        <button type="submit">Save bank details</button>
+      </form>
+    </article>
+
+    <article class="card-rich">
+      <h3>📧 Email (SMTP)</h3>
+      <p class="hint">Required to send portal invites, appointment reminders, and payment receipts to patients.</p>
+      <form class="form" id="smtp-form">
+        <input name="smtpHost" placeholder="SMTP host (e.g. smtp.gmail.com)" />
+        <input name="smtpPort" type="number" value="587" placeholder="Port (587 for TLS, 465 for SSL)" />
+        <input name="smtpUser" placeholder="SMTP username (full email address)" />
+        <input name="smtpPass" type="password" placeholder="SMTP password" />
+        <p class="hint" style="margin:-8px 0 12px;font-size:.78rem">⚠️ For Gmail, use an <strong>App Password</strong> (not your regular password). Generate one at <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a></p>
+        <input name="smtpFromEmail" placeholder="From email address" />
+        <input name="smtpFromName" placeholder="From name (e.g. Celon Dental)" />
+        <button type="submit">Save SMTP settings</button>
+      </form>
+    </article>
+    <article class="card-rich">
+      <h3>💾 Data Backup</h3>
+      <p class="hint">Download your clinic data for record-keeping or migration. Exports all patients, appointments, encounters, invoices, and services.</p>
+      <div class="form" style="display:flex;gap:10px;margin-top:8px">
+        <button type="button" id="export-json-btn" class="tab" style="background:var(--purple-soft);color:var(--purple-strong);border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:800">Download JSON</button>
+        <button type="button" id="export-csv-btn" class="tab" style="background:var(--purple-soft);color:var(--purple-strong);border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:800">Download CSV</button>
+      </div>
+      <p id="export-result" class="hint"></p>
+    </article>
+  </div>
+            <h3>Notification Templates</h3>
+            <form id="template-form" class="form">
+              <select name="templateKey">
+                <option value="appointment_reminder">Appointment Reminder</option>
+                <option value="portal_invite">Portal Invite</option>
+                <option value="invoice_issued">Invoice Issued</option>
+                <option value="payment_received">Payment Received</option>
+              </select>
+              <textarea name="templateBody" placeholder="Template body (use {{patientName}}, {{date}}, {{amount}})" rows="4"></textarea>
+              <button type="submit">Save template</button>
+            </form>
+            <div id="template-preview" class="cards"></div>
+            <h3>Message Log</h3>
+            <div id="message-log-list" class="cards"></div>
+          </section>
+          <section class="panel tab-panel" id="reports">
+            <h2>Reports</h2>
+            <form id="report-filter" class="form">
+              <input name="from" type="date" />
+              <input name="to" type="date" />
+              <button type="submit">Load report</button>
+              <button type="button" id="export-csv">Export CSV</button>
+            </form>
+            <div class="report-summary" id="report-summary"></div>
+            <div class="report-chart" id="report-chart"></div>
+            <div id="report-table-wrapper">
+              <table id="report-table" class="data-table">
+                <thead><tr><th>Date</th><th>Revenue (₦)</th><th>Transactions</th></tr></thead>
+                <tbody id="report-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <div id="patient-dashboard" class="patient-workspace" hidden>
+      <header class="app-topbar">
+        <div class="topbar-brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Patient Portal</strong>
+            <small>Secure clinic access</small>
+          </div>
+        </div>
+        <button id="patient-dashboard-logout" type="button" class="secondary-action">Log out</button>
+      </header>
+      <section class="panel">
+        <h2>Patient portal</h2>
+        <div class="grid" id="patient-stats"></div>
+        <h3>Appointments</h3>
+        <div id="patient-appointments" class="cards"></div>
+        <h3>Prescriptions</h3>
+        <div id="patient-prescriptions" class="cards"></div>
+        <h3>Invoices</h3>
+        <div id="patient-invoices" class="cards"></div>
+        <h3>Documents</h3>
+        <div id="patient-documents" class="cards"></div>
+      </section>
+    </div>
+  </main>
+  <div class="success-toast" id="success-toast" hidden role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="/specialist-charts.js?v=fix-v2"></script>
+  <script src="/api-base.js"></script>
+  <script src="/app.js?v=hmo-v16" type="module"></script>
+<div id="hmo-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <h3>Apply HMO Coverage</h3>
+    <p id="hmo-modal-invoice" class="hint"></p>
+    <label>Select HMO <select id="hmo-modal-select"><option value="">Loading...</option></select></label>
+    <label>Coverage amount (₦) <input id="hmo-modal-amount" type="number" min="0" value="0" /></label>
+    <div class="card-actions">
+      <button id="hmo-modal-cancel" style="background:transparent;color:var(--primary)" onclick="this.closest('.modal-overlay').style.cssText='display:none!important'">Cancel</button>
+      <button id="hmo-modal-confirm" class="paystack-btn" onclick="(async function(){const m=document.querySelector('#hmo-modal');const i=m.dataset.invoiceId;const s=document.querySelector('#hmo-modal-select');const o=s.options[s.selectedIndex];const a=Number(document.querySelector('#hmo-modal-amount').value);if(!o.value||a<=0){alert('Select HMO and enter amount');return}await fetch('/api/invoices/'+i,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('clinic_jwt')},body:JSON.stringify({hmoCoverageKobo:a,hmoInsuranceId:o.value})});m.style.cssText="display:none!important";location.reload()})()">Apply HMO</button>
+    </div>
+  </div>
+</div>
+<div id="pay-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <h3>Record Payment</h3>
+    <p id="pay-modal-invoice" class="hint"></p>
+    <label>Amount (₦) <input id="pay-modal-amount" type="number" min="0" value="0" /></label>
+    <div class="card-actions">
+      <button id="pay-modal-cancel" style="background:transparent;color:var(--primary)" onclick="this.closest('.modal-overlay').style.cssText='display:none!important'">Cancel</button>
+      <button id="pay-modal-confirm" class="paystack-btn" onclick="(async function(){const m=document.querySelector('#pay-modal');const i=m.dataset.invoiceId;const a=Number(document.querySelector('#pay-modal-amount').value);if(!a||a<=0){alert('Enter amount');return}await fetch('/api/invoices/'+i+'/payment',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('clinic_jwt')},body:JSON.stringify({amountKobo:a})});m.style.cssText="display:none!important";location.reload()})()">Record Payment</button>
+    </div>
+  </div>
+</div>
+</main></body></html>

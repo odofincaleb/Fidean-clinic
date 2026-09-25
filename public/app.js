@@ -487,6 +487,15 @@ function render() {
   dashboard.hidden = false;
   document.querySelector('.workspace-grid')?.classList.remove('auth-mode');
   document.querySelector('.sidebar')?.classList.remove('hidden');
+  // Populate topbar clinic name from settings
+  const s = snapshot.settings || {};
+  const nameEl = document.querySelector('#topbar-clinic-name');
+  if (nameEl) nameEl.textContent = (s.clinicName || 'Clinic') + ' Portal';
+  const addrEl = document.querySelector('#topbar-clinic-addr');
+  if (addrEl) addrEl.textContent = s.clinicAddress || '';
+  const logoEl = document.querySelector('.topbar-logo');
+  if (logoEl && s.clinicLogoUrl) logoEl.style.background = 'url(' + s.clinicLogoUrl + ') center/cover no-repeat';
+  else if (logoEl) logoEl.style.background = 'linear-gradient(135deg,#7c5cfc,#5b3ae8)';
   document.querySelector('.topbar')?.classList.remove('hidden');
   if (logout) logout.hidden = false;
   try {
@@ -1331,7 +1340,9 @@ document.querySelector('#member-form').addEventListener('submit', async (event) 
   if (editId) {
     // Only send password if it was filled
     if (!data.password) delete data.password;
-    await fetch(`/api/staff/${editId}/update`, { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+    const upResp = await fetch(`/api/staff/${editId}/update`, { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+    const upResult = await upResp.json().catch(() => ({}));
+    if (!upResp.ok || !upResult.ok) { alert('❌ Update failed: ' + (upResult.error || 'Unknown error')); return; }
     delete form.dataset.editId;
     form.querySelector('button').textContent = 'Create Staff';
     document.querySelector('#staff-reset-pw').style.display = 'none';
@@ -1342,7 +1353,9 @@ document.querySelector('#member-form').addEventListener('submit', async (event) 
     if (!data.role) { alert('Please select a role'); return; }
     if (!data.displayName) { alert('Please enter display name'); return; }
     Object.keys(data).forEach(k => { if (!data[k]) delete data[k]; });
-    await fetch(`/api/tenants/${tenantId}/invite`, { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+    const resp = await fetch(`/api/tenants/${tenantId}/invite`, { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok || !result.ok) { alert('❌ Failed: ' + (result.error || 'Unknown error')); return; }
     alert('✅ Staff created successfully');
   }
   form.reset();

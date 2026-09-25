@@ -8,7 +8,7 @@ const matrix: Record<Role, Permission[]> = {
   receptionist: ['create_appointment', 'view_patients'],
   nurse: ['view_patients', 'write_encounter', 'send_staff_messages'],
   accountant: ['view_billing', 'manage_billing', 'view_reports'],
-  store_manager: ['manage_inventory', 'send_staff_messages'],
+  store_manager: ['manage_inventory', 'send_staff_messages', 'view_patients', 'view_reports'],
   viewer: ['view_patients', 'view_reports'],
 };
 

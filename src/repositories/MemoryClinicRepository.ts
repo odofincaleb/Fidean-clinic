@@ -337,6 +337,7 @@ export class MemoryClinicRepository implements ClinicRepository {
     const tenant = requireEntity(this.tenants.get(tenantId), 'TENANT_NOT_FOUND');
     return {
       tenant,
+      settings: await this.getSettings(tenantId).catch(() => ({})),
       branches: await this.listBranches(tenantId),
       members: await this.listMembers(tenantId),
       patients: await this.listPatients(tenantId),

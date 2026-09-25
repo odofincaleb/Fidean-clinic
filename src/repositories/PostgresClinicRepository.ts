@@ -802,6 +802,7 @@ export class PostgresClinicRepository implements ClinicRepository {
     if (!tenant) throw notFound('TENANT_NOT_FOUND');
     return {
       tenant,
+      settings: await this.getSettings(tenantId).catch(() => ({})),
       branches: await this.listBranches(tenantId),
       members: await this.listMembers(tenantId),
       patients: await this.listPatients(tenantId),

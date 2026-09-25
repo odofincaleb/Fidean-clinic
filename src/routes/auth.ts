@@ -25,7 +25,7 @@ const loginInput = z.object({
 
 const inviteInput = z.object({
   email: z.string().email(),
-  role: z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer']),
+  role: z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'store_manager', 'viewer']),
   branchIds: z.array(z.string()).optional(),
   displayName: z.string().optional(),
   phone: z.string().optional(),

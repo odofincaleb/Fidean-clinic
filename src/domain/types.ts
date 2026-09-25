@@ -425,6 +425,7 @@ export interface MessageLog {
 
 export interface TenantSnapshot {
   tenant: Tenant;
+  settings: Record<string, any>;
   branches: Branch[];
   members: Member[];
   patients: Patient[];

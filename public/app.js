@@ -526,6 +526,15 @@ function render() {
     ).join('');
   }
 
+  /* Populate import branch dropdown */
+  const importBranch = document.querySelector('#patient-import-branch');
+  if (importBranch) {
+    const currentVal = importBranch.value;
+    importBranch.innerHTML = '<option value="">No branch (unassigned)</option>' + snapshot.branches.map((b) =>
+      `<option value="${b.id}" ${b.id === currentVal ? 'selected' : ''}>${b.name}</option>`
+    ).join('');
+  }
+
   /* Filter patients by branch + search */
   let displayPatients = snapshot.patients;
   const activeBranch = branchFilter?.value;

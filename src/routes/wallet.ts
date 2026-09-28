@@ -96,4 +96,48 @@ export function registerWalletRoutes(app: FastifyInstance, repo: ClinicRepositor
       paystackPublicKey: publicKey,
     });
   });
+
+  /* ── Wallet verify after Paystack callback ── */
+  app.post('/api/wallet/verify', async (request, reply) => {
+    const body = z.object({ reference: z.string() }).parse(request.body);
+    const secretKey = process.env.FIDEAN_PAYSTACK_SK || (() => {
+      try {
+        const envContent = fs.readFileSync(new URL('../../.env.fidean', import.meta.url), 'utf-8');
+        for (const line of envContent.split('\n')) {
+          const [k, ...v] = line.split('=');
+          if (k === 'FIDEAN_PAYSTACK_SK') return v.join('=').trim();
+        }
+      } catch {}
+      return '';
+    })();
+    if (!secretKey) throw httpError('PAYSTACK_NOT_CONFIGURED', 400);
+
+    try {
+      const resp = await fetch(`https://api.paystack.co/transaction/verify/${body.reference}`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      });
+      const data = await resp.json() as any;
+      if (data.status && data.data?.status === 'success') {
+        const tenantId = data.data.metadata?.tenantId;
+        const amount = Math.round((data.data.amount || 0) / 100);
+        if (tenantId) {
+          const settings = await repo.getSettings(tenantId);
+          const newBalance = (settings?.walletBalance ?? 0) + amount;
+          await repo.upsertSettings(tenantId, { walletBalance: newBalance });
+          await repo.recordWalletTransaction(tenantId, {
+            amount,
+            type: 'credit',
+            reason: 'topup',
+            paystackReference: body.reference,
+            description: 'Wallet top-up via Paystack',
+          });
+        }
+        return reply.send({ ok: true, amount, tenantId });
+      }
+      throw httpError('PAYMENT_VERIFICATION_FAILED', 400);
+    } catch (err) {
+      if (err && typeof err === 'object' && 'statusCode' in err) throw err;
+      throw httpError('PAYSTACK_VERIFICATION_ERROR', 502);
+    }
+  });
 }

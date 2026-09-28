@@ -987,18 +987,33 @@ function handleRoute() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
   const params = new URLSearchParams(window.location.search);
   if (path === '/payment-callback') {
-    showView('super-admin-view');
-    const ref = params.get('reference') || params.get('trxref') || '';
-    document.querySelector('#auth-error').textContent = `✅ Payment successful! Reference: ${ref}. Redirecting...`;
-    document.querySelector('#auth-error').hidden = false;
-    document.querySelector('#login-form').hidden = true;
-    // Redirect to tenant portal if known
-    const savedSlug = localStorage.getItem('lastTenantSlug');
-    setTimeout(() => {
-      window.location.href = savedSlug ? `/${savedSlug}` : '/';
-    }, 2000);
-    return;
-  }
+      showView('super-admin-view');
+      const ref = params.get('reference') || params.get('trxref') || '';
+      // Try to verify — wallet top-up first, then invoice
+      (async () => {
+        try {
+          const r = await fetch('/api/wallet/verify', {
+            method: 'POST', headers: headers(), body: JSON.stringify({ reference: ref })
+          });
+          const d = await r.json();
+          if (d.ok) {
+            document.querySelector('#auth-error').textContent = `✅ Wallet funded successfully! ₦${d.amount.toLocaleString()} added. Redirecting...`;
+            document.querySelector('#auth-error').hidden = false;
+            document.querySelector('#login-form').hidden = true;
+            const savedSlug = localStorage.getItem('lastTenantSlug');
+            setTimeout(() => { window.location.href = savedSlug ? '/' + savedSlug : '/'; }, 2000);
+            return;
+          }
+        } catch {}
+        // fallback: just show generic success message and redirect
+        document.querySelector('#auth-error').textContent = '✅ Payment successful! Reference: ' + ref + '. Redirecting...';
+        document.querySelector('#auth-error').hidden = false;
+        document.querySelector('#login-form').hidden = true;
+        const savedSlug = localStorage.getItem('lastTenantSlug');
+        setTimeout(() => { window.location.href = savedSlug ? '/' + savedSlug : '/'; }, 2000);
+      })();
+      return;
+    }
   if (path === '/activate' && params.get('token')) {
     showActivateView(params.get('token'));
     return;

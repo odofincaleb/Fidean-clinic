@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
+import { httpError } from '../http/errors.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
+import { sendNotification } from '../notifications/provider.js';
+import { sendWhatsAppMessage } from '../notifications/whatsappSender.js';
+import { sendSmsMessage } from '../notifications/smsSender.js';
 
 export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicRepository): void {
   app.post('/api/messages/send', async (request, reply) => {
@@ -11,8 +15,10 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
       recipient: z.string().min(1),
       subject: z.string().optional(),
       body: z.string().min(1),
+      templateName: z.string().optional(), // e.g. 'clinic_announcement_msg'
     }).parse(request.body);
 
+    const settings = await repo.getSettings(auth.tenantId);
     const log = await repo.createMessageLog(auth.tenantId, {
       channel: body.channel,
       recipient: body.recipient,
@@ -20,7 +26,74 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
       body: body.body,
     });
 
-    return reply.code(201).send({ ok: true, message: log });
+    // SMS/WhatsApp are wallet-funded channels. Email uses the tenant SMTP config.
+    if (body.channel === 'sms' || body.channel === 'whatsapp') {
+      if (!settings?.messagingEnabled) {
+        await repo.updateMessageLog(log.id, { status: 'failed', error: 'MESSAGING_DISABLED' });
+        throw httpError('MESSAGING_DISABLED', 403);
+      }
+      const cost = body.channel === 'whatsapp'
+        ? (settings.whatsappCostPerMsg ?? 80)
+        : (settings.smsCostPerMsg ?? 6);
+      const balance = settings.walletBalance ?? 0;
+      if (balance < cost) {
+        await repo.updateMessageLog(log.id, { status: 'failed', error: 'INSUFFICIENT_WALLET_BALANCE' });
+        throw httpError('INSUFFICIENT_WALLET_BALANCE', 402);
+      }
+
+      // Attempt the real send first — only deduct on success.
+      const templateName = body.channel === 'whatsapp' ? (body.templateName || 'clinic_announcement_msg') : undefined;
+      const sendResult = body.channel === 'whatsapp'
+        ? await sendWhatsAppMessage({
+            to: body.recipient,
+            template: { name: templateName, bodyParams: [body.body] },
+          })
+        : await sendSmsMessage({ to: body.recipient, body: body.body });
+      if (!sendResult.ok) {
+        await repo.updateMessageLog(log.id, { status: 'failed', provider: body.channel, error: sendResult.error });
+        throw httpError('MESSAGE_SEND_FAILED', 502);
+      }
+
+      // Deduct from wallet and record the debit.
+      const newBalance = balance - cost;
+      await repo.upsertSettings(auth.tenantId, { walletBalance: newBalance });
+      await repo.recordWalletTransaction(auth.tenantId, {
+        amount: cost,
+        type: 'debit',
+        reason: body.channel === 'whatsapp' ? 'whatsapp_msg' : 'sms_msg',
+        messageLogId: log.id,
+        description: `${body.channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} message to ${body.recipient}`,
+      });
+      const sent = await repo.updateMessageLog(log.id, {
+        status: 'sent',
+        provider: body.channel,
+        providerMessageId: sendResult.providerMessageId,
+        sentAt: new Date().toISOString(),
+      });
+
+      return reply.code(201).send({ ok: true, message: sent, cost, balance: newBalance });
+    }
+
+    // Email: attempt real send via tenant SMTP; keep the log queued if SMTP isn't configured.
+    try {
+      const result = await sendNotification(
+        { tenantId: auth.tenantId, channel: 'email', recipient: body.recipient, subject: body.subject, body: body.body } as any,
+        settings as any,
+      );
+      if (result.ok) {
+        const sent = await repo.updateMessageLog(log.id, {
+          status: 'sent',
+          provider: result.provider,
+          providerMessageId: result.providerMessageId,
+          sentAt: new Date().toISOString(),
+        });
+        return reply.code(201).send({ ok: true, message: sent });
+      }
+      await repo.updateMessageLog(log.id, { status: 'failed', provider: 'smtp', error: result.error });
+      throw httpError('MESSAGE_SEND_FAILED', 502);
+    } catch (err) {
+      throw err;
+    }
   });
 
   app.get('/api/messages', async (request) => {

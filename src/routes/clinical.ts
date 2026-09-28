@@ -326,7 +326,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       memberId: auth.member.id,
       type: 'invoice_payment_received',
       subject: 'Payment received',
-      body: `Payment of ${body.amountKobo} kobo recorded for ${paid.invoiceNumber}.`,
+      body: `Payment of ₦${(body.amountKobo).toLocaleString()} recorded for ${paid.invoiceNumber}.`,
     });
     await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'invoice_payment', objectType: 'invoice', objectId: paid.id, details: { amountKobo: body.amountKobo } });
     return { ok: true, invoice: paid };
@@ -346,7 +346,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       memberId: auth.member.id,
       type: 'invoice_issued',
       subject: `Invoice ${issued.invoiceNumber} – Payment Required`,
-      body: `Invoice ${issued.invoiceNumber} for ₦${(issued.totalKobo / 100).toLocaleString()} has been issued. Balance due: ₦${((issued.totalKobo - issued.amountPaidKobo) / 100).toLocaleString()}. Please log into the patient portal to make payment.`,
+      body: `Invoice ${issued.invoiceNumber} for ₦${(issued.totalKobo).toLocaleString()} has been issued. Balance due: ₦${((issued.totalKobo - issued.amountPaidKobo)).toLocaleString()}. Please log into the patient portal to make payment.`,
     });
     await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'invoice_issue', objectType: 'invoice', objectId: issued.id });
     // Send email immediately via SMTP
@@ -361,7 +361,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
           to: patient.email,
           recipient: patient.email,
           subject: `Invoice ${issued.invoiceNumber} from ${settings.clinicName || 'Your Clinic'}`,
-          body: `Dear ${patient.firstName},\n\nInvoice ${issued.invoiceNumber} has been issued for ₦${(issued.totalKobo / 100).toLocaleString()}.\n\nAmount Paid: ₦${(issued.amountPaidKobo / 100).toLocaleString()}\nBalance Due: ₦${((issued.totalKobo - issued.amountPaidKobo) / 100).toLocaleString()}\n\nPlease log into your patient portal to view and pay this invoice.\n\nThank you,\n${settings.clinicName || 'Your Clinic'}`,
+          body: `Dear ${patient.firstName},\n\nInvoice ${issued.invoiceNumber} has been issued for ₦${(issued.totalKobo).toLocaleString()}.\n\nAmount Paid: ₦${(issued.amountPaidKobo).toLocaleString()}\nBalance Due: ₦${((issued.totalKobo - issued.amountPaidKobo)).toLocaleString()}\n\nPlease log into your patient portal to view and pay this invoice.\n\nThank you,\n${settings.clinicName || 'Your Clinic'}`,
         }, settings);
       }
     } catch (_) {}

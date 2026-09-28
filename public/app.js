@@ -235,11 +235,13 @@ function renderCurrentSpecialistChart() {
     area.appendChild(panelDiv);
     mod.renderFinding(panelDiv, targetId, existing,
       (saved) => {
-        currentEncounterSpecialistData[targetId] = saved;
+        const tid = saved.toothId || targetId;
+        currentEncounterSpecialistData[tid] = saved;
         renderCurrentSpecialistChart();
       },
-      () => {
-        delete currentEncounterSpecialistData[targetId];
+      (tid) => {
+        const key = tid || targetId;
+        delete currentEncounterSpecialistData[key];
         renderCurrentSpecialistChart();
       }
     );
@@ -515,9 +517,33 @@ function render() {
     `<article class="card-rich card-clickable" data-branch-id="${branch.id}"><h3>${branch.name}</h3><p>${branch.address || 'No address yet'}</p><small>${branch.id}</small></article>`
   ).join('');
 
-  document.querySelector('#patient-list').innerHTML = snapshot.patients.map((patient) =>
-    `<article class="card-rich card-clickable" data-patient-id="${patient.id}"><h3>${patient.firstName} ${patient.lastName || ''}</h3><p class="card-meta">${patient.clinicPatientId ? 'Clinic ID: ' + patient.clinicPatientId + ' · ' : ''}${patient.patientCode} · ${patient.phone}</p><div class="card-details">${patient.email ? `<span>✉ ${patient.email}</span>` : ''}${patient.dob ? `<span>📅 DOB: ${new Date(patient.dob).toLocaleDateString()}</span>` : ''}${patient.gender ? `<span>⚤ ${patient.gender}</span>` : ''}${patient.bloodGroup ? `<span>🩸 ${patient.bloodGroup}</span>` : ''}${patient.address ? `<span>📍 ${patient.address}${patient.city ? ', ' + patient.city : ''}${patient.state ? ', ' + patient.state : ''}</span>` : ''}${patient.medicalHistory ? `<small class="card-note">📋 ${patient.medicalHistory.substring(0,80)}</small>` : ''}</div></article>`
-  ).join('');
+  /* Populate branch filter dropdown */
+  const branchFilter = document.querySelector('#patient-branch-filter');
+  if (branchFilter) {
+    const currentVal = branchFilter.value;
+    branchFilter.innerHTML = '<option value="">All branches</option>' + snapshot.branches.map((b) =>
+      `<option value="${b.id}" ${b.id === currentVal ? 'selected' : ''}>${b.name}</option>`
+    ).join('');
+  }
+
+  /* Filter patients by branch + search */
+  let displayPatients = snapshot.patients;
+  const activeBranch = branchFilter?.value;
+  if (activeBranch) {
+    displayPatients = displayPatients.filter((p) => p.branchId === activeBranch);
+  }
+  const searchQ = (document.querySelector('#patient-search-input')?.value || '').trim().toLowerCase();
+  if (searchQ) {
+    displayPatients = displayPatients.filter((p) =>
+      (p.firstName + ' ' + (p.lastName || '') + ' ' + (p.clinicPatientId || '') + ' ' + p.patientCode + ' ' + (p.phone || '')).toLowerCase().includes(searchQ)
+    );
+  }
+
+  document.querySelector('#patient-list').innerHTML = displayPatients.map((patient) => {
+    const branchName = snapshot.branches.find((b) => b.id === patient.branchId)?.name || '';
+    const esc = (s) => { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    return `<article class="card-rich card-clickable" data-patient-id="${patient.id}"><h3>${esc(patient.firstName)} ${esc(patient.lastName)}</h3><p class="card-meta">${patient.clinicPatientId ? 'Clinic ID: ' + esc(patient.clinicPatientId) + ' &middot; ' : ''}${patient.patientCode} &middot; ${esc(patient.phone)}${branchName ? ' <span class="badge badge-active">' + esc(branchName) + '</span>' : ''}</p><div class="card-details">${patient.email ? '<span>&#9993; ' + esc(patient.email) + '</span>' : ''}${patient.dob ? '<span>&#128197; DOB: ' + new Date(patient.dob).toLocaleDateString() + '</span>' : ''}${patient.gender ? '<span>&#9906; ' + esc(patient.gender) + '</span>' : ''}${patient.bloodGroup ? '<span>&#129656; ' + esc(patient.bloodGroup) + '</span>' : ''}${patient.address ? '<span>&#128205; ' + esc(patient.address) + (patient.city ? ', ' + esc(patient.city) : '') + (patient.state ? ', ' + esc(patient.state) : '') + '</span>' : ''}${patient.medicalHistory ? '<small class="card-note">&#128203; ' + esc(patient.medicalHistory.substring(0,80)) + '</small>' : ''}</div></article>`;
+  }).join('');
 
   document.querySelector('#appointment-list').innerHTML = snapshot.appointments.map((appt) => {
     const branch = snapshot.branches.find((item) => item.id === appt.branchId);
@@ -549,7 +575,7 @@ function render() {
   }).join('');
   document.querySelector('#encounter-list').innerHTML = (snapshot.encounters || []).map((item) => {
     const hasSpecialist = item.specialistData && item.specialistData.type && item.specialistData.findings && Object.keys(item.specialistData.findings).length;
-    return `<article class="card-rich card-clickable" data-encounter-id="${item.id}"><h3>${item.reason || 'Encounter'}</h3><p class="card-meta"><span class="badge badge-${item.status}">${item.status}</span> · ${item.diagnosis || "No diagnosis"}${item.bloodPressure ? ' · BP ' + item.bloodPressure : ''}${item.temperatureC ? ' · ' + item.temperatureC + '°C' : ''}${hasSpecialist ? ' · <span class="specialist-badge">📋 Chart</span>' : ''}</p>${item.status !== 'signed' && canWriteEncounter ? '<button data-sign="' + item.id + '">Sign</button>' : ''}</article>`;
+    return `<article class="card-rich card-clickable" data-encounter-id="${item.id}"><h3>${item.reason || 'Encounter'}</h3><p class="card-meta"><span class="badge badge-${item.status}">${item.status}</span> · ${item.diagnosis || "No diagnosis"}${item.bloodPressure ? ' · BP ' + item.bloodPressure : ''}${item.temperatureC ? ' · ' + item.temperatureC + '°C' : ''}${hasSpecialist ? ' · <span class="specialist-badge">Chart</span>' : ''}${hasSpecialist ? ' <span class="dash-finding-note">' + Object.values(item.specialistData.findings).map(function(f){return f.note||''}).filter(Boolean).join('; ') + '</span>' : ''}</p>${item.status !== 'signed' && canWriteEncounter ? '<button data-sign="' + item.id + '">Sign</button>' : ''}</article>`;
   }).join('');
   document.querySelector('#prescription-list').innerHTML = (snapshot.prescriptions || []).map((item) => {
     const patient = snapshot.patients.find(p => p.id === item.patientId);
@@ -805,7 +831,12 @@ async function refresh() {
   try {
     response = await fetch(`/api/tenants/${tenantId}/snapshot`, { headers: headers() });
     const body = await response.json();
-    if (body.snapshot) snapshot = body.snapshot;
+    if (body.snapshot) {
+      snapshot = body.snapshot;
+      if (body.snapshot.settings && typeof body.snapshot.settings === 'object') {
+        currentSettings = { ...(currentSettings || {}), ...body.snapshot.settings };
+      }
+    }
   } catch (e) { console.warn('refresh snapshot fetch failed:', e); }
   let accountsRes, notifyRes, auditRes, statusRes, msgRes;
   try {
@@ -823,6 +854,7 @@ async function refresh() {
   systemStatus = statusRes.ok ? await statusRes.json() : null;
   staffMessages = msgRes.ok ? (await msgRes.json()).messages || [] : [];
   render();
+  refreshBroadcastPreview();
   // Restore last active tab after page refresh
   const savedTab = localStorage.getItem('clinic_active_tab');
   if (savedTab) {
@@ -1829,6 +1861,13 @@ function renderPatientImportMapper() {
     <button type="button" id="run-patient-import">Import ${patientImportRows.length} rows</button>`;
   const sampleRows = patientImportRows.slice(0, 5);
   preview.innerHTML = `<h4>Preview first ${sampleRows.length} rows</h4><div class="table-scroll"><table class="data-table"><thead><tr>${patientImportHeaders.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${sampleRows.map((row) => `<tr>${patientImportHeaders.map((h) => `<td>${escapeHtml(row[h] || '')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  /* Populate branch dropdown */
+  const branchSelect = document.querySelector('#patient-import-branch');
+  if (branchSelect && snapshot) {
+    const currentVal = branchSelect.value;
+    branchSelect.innerHTML = '<option value="">No branch (unassigned)</option>' +
+      (snapshot.branches || []).map((b) => `<option value="${b.id}" ${b.id === currentVal ? 'selected' : ''}>${b.name}</option>`).join('');
+  }
 }
 
 async function parsePatientImportFile(file) {
@@ -1897,9 +1936,11 @@ document.querySelector('#patient-search-input')?.addEventListener('input', () =>
   const q = document.querySelector('#patient-search-input').value.toLowerCase().trim();
   const list = document.querySelector('#patient-list');
   if (!q) {
-    list.querySelectorAll('article').forEach(a => a.style.display = '');
+    render();
     return;
   }
+
+document.querySelector('#patient-branch-filter')?.addEventListener('change', () => { render(); });
   list.querySelectorAll('article').forEach(a => {
     const text = a.textContent.toLowerCase();
     a.style.display = text.includes(q) ? '' : 'none';
@@ -2098,10 +2139,13 @@ document.addEventListener('click', async (e) => {
     runImport.disabled = true;
     result.textContent = 'Importing patients...';
     try {
+      const branchId = document.querySelector('#patient-import-branch')?.value || undefined;
+      const payload = { tenantId, format: 'excel', rows: patientImportRows, mapping };
+      if (branchId) payload.branchId = branchId;
       const response = await fetch('/api/patients/bulk-import', {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ tenantId, format: 'excel', rows: patientImportRows, mapping }),
+        body: JSON.stringify(payload),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Import failed');
@@ -2484,6 +2528,247 @@ document.querySelector('#staff-message-form')?.addEventListener('submit', async 
   e.target.reset();
   await refresh();
 });
+
+/* ── Broadcast (WhatsApp / SMS) ── */
+function broadcastCostPerMsg(channel) {
+    return channel === 'whatsapp'
+    ? (currentSettings?.whatsappCostPerMsg ?? 80)
+    : (currentSettings?.smsCostPerMsg ?? 6);
+}
+
+function broadcastRecipients() {
+  if (!snapshot || !Array.isArray(snapshot.patients)) return [];
+  const patients = snapshot.patients.filter((p) => p && p.phone && String(p.phone).trim().length >= 5);
+  const filter = document.querySelector('#broadcast-filter')?.value || 'all';
+
+  if (filter === 'department') {
+    const dept = (document.querySelector('#broadcast-department')?.value || '').trim().toLowerCase();
+    if (!dept) return [];
+    const apptPatients = new Set((snapshot.appointments || [])
+      .filter((a) => a && a.serviceName && a.serviceName.toLowerCase().includes(dept))
+      .map((a) => a.patientId));
+    return patients.filter((p) => apptPatients.has(p.id));
+  }
+
+  if (filter === 'recent') {
+    const days = Math.max(1, Number(document.querySelector('#broadcast-recent-days')?.value) || 30);
+    const cutoff = Date.now() - days * 86400 * 1000;
+    const recentPatients = new Set((snapshot.encounters || [])
+      .filter((enc) => enc && enc.createdAt && new Date(enc.createdAt).getTime() >= cutoff)
+      .map((enc) => enc.patientId));
+    return patients.filter((p) => recentPatients.has(p.id));
+  }
+
+  if (filter === 'specific') {
+    const selected = window._specificPatients || {};
+    const ids = Object.keys(selected);
+    if (ids.length === 0) return [];
+    return patients.filter((p) => selected[p.id]);
+  }
+
+  return patients; // all
+}
+
+function updateBroadcastPreview() {
+  const channel = document.querySelector('#broadcast-channel')?.value || 'whatsapp';
+  const recipients = broadcastRecipients();
+  const costPerMsg = broadcastCostPerMsg(channel);
+  const totalCost = recipients.length * costPerMsg;
+  document.querySelector('#broadcast-preview').innerHTML =
+    `<strong>${recipients.length}</strong> recipient${recipients.length === 1 ? '' : 's'} · Cost: <strong>₦${totalCost.toLocaleString()}</strong> <span style="color:var(--text-tertiary)">(${recipients.length} × ₦${costPerMsg})</span>`;
+
+  const balance = currentSettings?.walletBalance ?? 0;
+  const warning = document.querySelector('#broadcast-balance-warning');
+  const enabled = !!currentSettings?.messagingEnabled;
+  if (!enabled) {
+    warning.style.display = 'block';
+    warning.textContent = '⚠️ Messaging is disabled. Enable it in Settings → Messaging & Wallet.';
+  } else if (balance < totalCost && recipients.length > 0) {
+    warning.style.display = 'block';
+    warning.textContent = `⚠️ Wallet balance (₦${balance.toLocaleString()}) is less than the estimated cost (₦${totalCost.toLocaleString()}). Top up in Settings → Messaging & Wallet.`;
+  } else {
+    warning.style.display = 'none';
+  }
+}
+
+/* ── Specific patients: searchable checkbox picker ── */
+window._specificPatients = {};
+
+function buildPatientCheckboxList(query) {
+  const container = document.querySelector('#broadcast-patient-checkbox-list');
+  if (!container) return;
+  const q = (query || '').trim().toLowerCase();
+  const allPatients = (snapshot?.patients || []).filter((p) => p && p.phone && String(p.phone).trim().length >= 5);
+  const filtered = q
+    ? allPatients.filter((p) => (p.firstName + ' ' + (p.lastName || '') + ' ' + (p.phone || '')).toLowerCase().includes(q))
+    : allPatients;
+  const maxShow = q ? filtered.length : Math.min(filtered.length, 20);
+  container.innerHTML = filtered.slice(0, maxShow).map((p) => {
+    const name = escapeHtml(p.firstName + ' ' + (p.lastName || ''));
+    const phone = escapeHtml(String(p.phone));
+    const checked = window._specificPatients[p.id] ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:.85rem">
+      <input type="checkbox" data-patient-id="${p.id}" ${checked} />
+      <span>${name} <span style="color:var(--text-tertiary);font-size:.78rem">${phone}</span></span>
+    </label>`;
+  }).join('');
+  if (filtered.length === 0) {
+    container.innerHTML = '<p style="padding:12px;text-align:center;color:var(--text-tertiary);font-size:.85rem">No patients match.</p>';
+  } else if (!q && filtered.length > 20) {
+    container.innerHTML += `<p style="padding:6px 8px;text-align:center;color:var(--text-tertiary);font-size:.78rem">Showing 20 of ${filtered.length} — type to narrow</p>`;
+  }
+  // Wire checkbox changes to selection state
+  container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener('change', function() {
+      if (this.checked) window._specificPatients[this.dataset.patientId] = true;
+      else delete window._specificPatients[this.dataset.patientId];
+      updateBroadcastPreview();
+    });
+  });
+}
+
+document.querySelector('#broadcast-patient-search')?.addEventListener('input', function() {
+  buildPatientCheckboxList(this.value);
+});
+
+/* ── Template preview ── */
+function getTemplatePreviewHtml(template, body, clinicName) {
+  const name = clinicName || 'Clinic';
+  switch (template) {
+    case 'clinic_appointment_reminder':
+      return `<strong style="color:#374151">📅 Appointment Reminder</strong><br><span style="color:#6b7280">Dear {{Patient Name}},</span><br><span style="color:#6b7280">You have an appointment at {{Date & Time}}.</span><br><span style="color:#059669">— ${escapeHtml(name)}</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
+    case 'clinic_payment_receipt_msg':
+      return `<strong style="color:#374151">💳 Payment Receipt</strong><br><span style="color:#6b7280">Dear {{Patient Name}},</span><br><span style="color:#059669">₦{{Amount}} received.</span><br><span style="color:#6b7280">— ${escapeHtml(name)}</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
+    case 'clinic_health_tip_msg':
+      return `<strong style="color:#374151">🩺 Health Tip</strong><br><span style="color:#6b7280">${escapeHtml(name)}</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#059669">${escapeHtml(body)}</span>`;
+    case 'clinic_announcement_msg':
+    default:
+      return `<strong style="color:#374151">📢 Announcement from ${escapeHtml(name)}</strong><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#059669">${escapeHtml(body)}</span>`;
+  }
+}
+
+function updateTemplatePreview() {
+  const channel = document.querySelector('#broadcast-channel')?.value;
+  const wrap = document.querySelector('#broadcast-template-wrap');
+  if (channel !== 'whatsapp') { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const template = document.querySelector('#broadcast-template')?.value || 'clinic_announcement_msg';
+  const body = (document.querySelector('#broadcast-body')?.value || '').trim();
+  const clinicName = currentSettings?.clinicName || (snapshot?.tenant?.name || '');
+  const preview = document.querySelector('#broadcast-template-preview');
+  if (!body) {
+    preview.innerHTML = '<span style="color:var(--text-tertiary)">Type a message to see how it wraps in the template.</span>';
+    return;
+  }
+  preview.innerHTML = getTemplatePreviewHtml(template, body, clinicName);
+}
+
+/* Wire channel change to template show/hide */
+document.querySelector('#broadcast-channel')?.addEventListener('change', function() {
+  updateTemplatePreview();
+  updateBroadcastPreview();
+});
+
+/* Wire template selector + body to preview update */
+document.querySelector('#broadcast-template')?.addEventListener('change', updateTemplatePreview);
+document.querySelector('#broadcast-body')?.addEventListener('input', updateTemplatePreview);
+
+/* Modify updateBroadcastPreview to also update template preview */
+const _origUpdateBroadcastPreview = updateBroadcastPreview;
+updateBroadcastPreview = function() {
+  updateTemplatePreview();
+  _origUpdateBroadcastPreview();
+};
+
+document.querySelector('#broadcast-filter')?.addEventListener('change', () => {
+  const filter = document.querySelector('#broadcast-filter')?.value;
+  document.querySelector('#broadcast-department-wrap').style.display = filter === 'department' ? 'block' : 'none';
+  document.querySelector('#broadcast-recent-wrap').style.display = filter === 'recent' ? 'block' : 'none';
+  document.querySelector('#broadcast-specific-wrap').style.display = filter === 'specific' ? 'block' : 'none';
+  updateBroadcastPreview();
+});
+['#broadcast-channel', '#broadcast-department', '#broadcast-recent-days', '#broadcast-body'].forEach((sel) => {
+  document.querySelector(sel)?.addEventListener('input', updateBroadcastPreview);
+  document.querySelector(sel)?.addEventListener('change', updateBroadcastPreview);
+});
+
+document.querySelector('#broadcast-send-btn')?.addEventListener('click', async () => {
+  const channel = document.querySelector('#broadcast-channel')?.value || 'whatsapp';
+  const body = (document.querySelector('#broadcast-body')?.value || '').trim();
+  const patients = broadcastRecipients();
+  const resultBox = document.querySelector('#broadcast-result');
+
+  if (!body) { showError('Enter a message body first.'); return; }
+  if (patients.length === 0) { showError('No recipients match the selected filter.'); return; }
+  if (!currentSettings?.messagingEnabled) { showError('Messaging is disabled. Enable it in Settings → Messaging & Wallet.'); return; }
+  const totalCost = patients.length * broadcastCostPerMsg(channel);
+  if ((currentSettings?.walletBalance ?? 0) < totalCost) {
+    showError(`Insufficient wallet balance. Need ₦${totalCost.toLocaleString()}, have ₦${(currentSettings?.walletBalance ?? 0).toLocaleString()}.`);
+    return;
+  }
+  if (!confirm(`Send ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} to ${patients.length} patient(s)?\nEstimated cost: ₦${totalCost.toLocaleString()}`)) return;
+
+  const btn = document.querySelector('#broadcast-send-btn');
+  btn.disabled = true;
+  btn.textContent = `Sending 0/${patients.length}...`;
+  resultBox.innerHTML = '';
+  let sent = 0, failed = 0;
+
+  for (let i = 0; i < patients.length; i++) {
+    const p = patients[i];
+    try {
+      const payload = { channel, recipient: String(p.phone).trim(), body };
+      if (channel === 'whatsapp') {
+        payload.templateName = document.querySelector('#broadcast-template')?.value || 'clinic_announcement_msg';
+      }
+      const resp = await fetch('/api/messages/send', {
+        method: 'POST', headers: headers(),
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data && data.ok) {
+        sent++;
+      } else {
+        failed++;
+        const err = data && data.error ? data.error : `HTTP ${resp.status}`;
+        const item = document.createElement('div');
+        item.className = 'card-rich';
+        item.style.borderLeft = '3px solid #f87171';
+        item.innerHTML = `<p><strong>${escapeHtml(p.firstName + ' ' + (p.lastName || ''))}</strong> <span style="float:right;color:#b91c1c">✗ ${escapeHtml(err)}</span></p><p style="font-size:.78rem;color:var(--text-tertiary)">${escapeHtml(String(p.phone))}</p>`;
+        resultBox.appendChild(item);
+      }
+    } catch (err) {
+      failed++;
+      const item = document.createElement('div');
+      item.className = 'card-rich';
+      item.style.borderLeft = '3px solid #f87171';
+      item.innerHTML = `<p><strong>${escapeHtml(p.firstName + ' ' + (p.lastName || ''))}</strong> <span style="float:right;color:#b91c1c">✗ ${escapeHtml(String(err && err.message || 'network'))}</span></p>`;
+      resultBox.appendChild(item);
+    }
+    btn.textContent = `Sending ${i + 1}/${patients.length}...`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Send broadcast';
+  const summary = document.createElement('div');
+  summary.className = 'card-rich';
+  summary.style.borderLeft = `3px solid ${failed ? '#f59e0b' : '#22c55e'}`;
+  summary.innerHTML = `<p><strong>Done.</strong> ${sent} sent ✅ ${failed ? '· ' + failed + ' failed ❌' : ''}</p>`;
+  resultBox.prepend(summary);
+  showSuccessToast(`Broadcast complete: ${sent} sent, ${failed} failed`);
+  await refresh();
+});
+
+/* refresh broadcast preview whenever data loads */
+function refreshBroadcastPreview() {
+  if (document.querySelector('#broadcast-preview')) {
+    updateBroadcastPreview();
+    // Rebuild patient checkbox list if specific picker is visible
+    if (document.querySelector('#broadcast-specific-wrap')?.style?.display === 'block') {
+      buildPatientCheckboxList(document.querySelector('#broadcast-patient-search')?.value || '');
+    }
+  }
+}
 /* ── Inventory form ── */
 document.querySelector('#inventory-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -2564,7 +2849,7 @@ document.querySelector('#hmo-modal-confirm')?.addEventListener('click', async ()
   const opt = sel.options[sel.selectedIndex];
   const amount = Number(document.querySelector('#hmo-modal-amount').value);
   if (!opt.value || amount <= 0) { alert('Select an HMO and enter amount'); return; }
-  await fetch(`/api/invoices/${invoiceId}`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ hmoCoverageKobo: amount * 100, hmoInsuranceId: opt.value }) });
+  await fetch(`/api/invoices/${invoiceId}`, { method: 'PATCH', headers: headers(), body: JSON.stringify({ hmoCoverageKobo: amount, hmoInsuranceId: opt.value }) });
   modal.hidden = true;
   await refresh();
 });
@@ -2584,7 +2869,7 @@ document.querySelector('#pay-modal-confirm')?.addEventListener('click', async ()
   const invoiceId = modal.dataset.invoiceId;
   const amount = Number(document.querySelector('#pay-modal-amount').value);
   if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
-  await fetch(`/api/invoices/${invoiceId}/payment`, { method: 'POST', headers: headers(), body: JSON.stringify({ amountKobo: amount * 100 }) });
+  await fetch(`/api/invoices/${invoiceId}/payment`, { method: 'POST', headers: headers(), body: JSON.stringify({ amountKobo: amount }) });
   modal.hidden = true;
   await refresh();
 });
@@ -2738,10 +3023,10 @@ async function loadLedger() {
   document.querySelector('#ledger-summary').innerHTML = `
     <article class="stat"><strong>₦${totalInvoiced.toLocaleString()}</strong><span>Invoiced</span></article>
     <article class="stat"><strong>₦${totalHmo.toLocaleString()}</strong><span>HMO covers</span></article>
-    <article class="stat"><strong>₦${(totalRevenue/100).toLocaleString()}</strong><span>Collected</span></article>
+    <article class="stat"><strong>₦${totalRevenue.toLocaleString()}</strong><span>Collected</span></article>
     <article class="stat"><strong>${entries.length}</strong><span>Entries</span></article>`;
   document.querySelector('#ledger-list').innerHTML = entries.length
-    ? entries.map(e => `<article class="card-rich" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;align-items:center"><div><strong style="font-size:13px">${e.ref}</strong><br><span style="font-size:11px;color:var(--text-tertiary)">${e.date} · ${e.type} · ${e.desc}</span></div><div style="text-align:right"><span style="font-size:13px;font-weight:600">₦${(e.paid/100).toLocaleString()}</span>${e.hmo ? `<br><span style="font-size:11px;color:var(--success)">HMO: -₦${(e.hmo/100).toLocaleString()}</span>` : ''}</div></div></article>`).join('')
+    ? entries.map(e => `<article class="card-rich" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;align-items:center"><div><strong style="font-size:13px">${e.ref}</strong><br><span style="font-size:11px;color:var(--text-tertiary)">${e.date} · ${e.type} · ${e.desc}</span></div><div style="text-align:right"><span style="font-size:13px;font-weight:600">₦${e.paid.toLocaleString()}</span>${e.hmo ? `<br><span style="font-size:11px;color:var(--success)">HMO: -₦${e.hmo.toLocaleString()}</span>` : ''}</div></div></article>`).join('')
     : '<p class="hint" style="text-align:center;padding:24px">No ledger entries found.</p>';
 }
 
@@ -2763,9 +3048,52 @@ async function loadSettings() {
           }
         });
       });
+      // Messaging & Wallet
+      const msgEnabled = document.querySelector('#messaging-enabled');
+      if (msgEnabled) msgEnabled.checked = !!data.messagingEnabled;
+      const waCost = document.querySelector('#whatsapp-cost');
+      if (waCost) waCost.value = data.whatsappCostPerMsg ?? 80;
+      const smsCost = document.querySelector('#sms-cost');
+      if (smsCost) smsCost.value = data.smsCostPerMsg ?? 6;
+      const balDisp = document.querySelector('#wallet-balance-display');
+      if (balDisp) balDisp.textContent = (data.walletBalance ?? 0).toLocaleString();
+      currentSettings = data;
     }
   } catch {}
 }
+
+/* ── Messaging settings save ── */
+document.querySelector('#messaging-enabled')?.addEventListener('change', async (e) => {
+  await fetch('/api/settings', {
+    method: 'PUT', headers: headers(), body: JSON.stringify({ messagingEnabled: e.target.checked })
+  }).then(r => r.json()).then(d => { if (d && d.tenantId) showSuccessToast('Messaging ' + (e.target.checked ? 'enabled' : 'disabled')); }).catch(() => {});
+});
+
+document.querySelector('#whatsapp-cost')?.addEventListener('change', async (e) => {
+  const v = Math.max(1, Math.round(Number(e.target.value) || 1));
+  await fetch('/api/settings', { method: 'PUT', headers: headers(), body: JSON.stringify({ whatsappCostPerMsg: v }) }).catch(() => {});
+});
+document.querySelector('#sms-cost')?.addEventListener('change', async (e) => {
+  const v = Math.max(1, Math.round(Number(e.target.value) || 1));
+  await fetch('/api/settings', { method: 'PUT', headers: headers(), body: JSON.stringify({ smsCostPerMsg: v }) }).catch(() => {});
+});
+
+/* ── Wallet top-up ── */
+document.querySelector('#wallet-topup-btn')?.addEventListener('click', async () => {
+  const amt = prompt('Enter top-up amount in Naira (₦):', '5000');
+  if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return;
+  try {
+    const resp = await fetch('/api/wallet/topup', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ amount: Number(amt) })
+    });
+    const data = await resp.json();
+    if (data.authorizationUrl) {
+      window.location.href = data.authorizationUrl;
+    } else {
+      alert('❌ ' + (data.error || 'Top-up failed'));
+    }
+  } catch (err) { alert('❌ Top-up failed: ' + err.message); }
+});
 
 /* ── Notification Templates ── */
 let currentSettings = {};
@@ -2943,7 +3271,7 @@ document.addEventListener('click', async (e) => {
         return;
       }
       if (data.reference) {
-        alert(`Payment ref: ${data.reference}\nAmount: ₦${(data.amountKobo / 100).toLocaleString()}\nRedirect URL: ${data.authorizationUrl || 'NONE'}`);
+        alert(`Payment ref: ${data.reference}\nAmount: ₦${(data.amountKobo || 0).toLocaleString()}\nRedirect URL: ${data.authorizationUrl || 'NONE'}`);
         if (data.authorizationUrl) {
           window.location.href = data.authorizationUrl;
         }

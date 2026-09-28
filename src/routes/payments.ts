@@ -28,11 +28,13 @@ export function registerPaymentsRoutes(app: FastifyInstance, repo: ClinicReposit
     const publicKey = settings?.paystackPublicKey;
     if (!secretKey || !publicKey) throw httpError('PAYSTACK_NOT_CONFIGURED', 400);
 
-    const amountKobo = invoice.totalKobo - invoice.amountPaidKobo;
+    const amount = invoice.totalKobo - invoice.amountPaidKobo;
     const reference = `pay_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;
-    const tx = await repo.createPaystackTransaction(auth.tenantId, body.invoiceId, reference, amountKobo);
+    const tx = await repo.createPaystackTransaction(auth.tenantId, body.invoiceId, reference, amount);
 
-    // Call Paystack API to initialize transaction
+    // Call Paystack API to initialize transaction.
+    // Paystack API expects the amount in kobo (smallest unit); the DB stores Naira.
+    // This * 100 is the ONLY kobo denominator in the system and is required by Paystack.
     try {
       const paystackResp = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
@@ -42,7 +44,7 @@ export function registerPaymentsRoutes(app: FastifyInstance, repo: ClinicReposit
         },
         body: JSON.stringify({
           email: auth.member?.email || auth.email || '',
-          amount: amountKobo,
+          amount: amount * 100,
           reference,
           currency: invoice.currency || 'NGN',
           callback_url: 'http://169.58.111.70:4310/payment-callback',
@@ -143,28 +145,49 @@ export function registerPaymentsRoutes(app: FastifyInstance, repo: ClinicReposit
     return { ok: true, transaction: tx };
   });
 
-  // Paystack webhook: verify payment and update invoice
+  // Paystack webhook: verify payment and update invoice / credit wallet topup.
+  // Paystack sends event.data.amount in kobo — convert to Naira at this boundary only.
   app.post('/api/payments/webhook', async (request, reply) => {
     const event = request.body as any;
-    if (event?.event === 'charge.success' && event?.data?.reference && event?.data?.metadata?.invoiceId && event?.data?.metadata?.tenantId) {
+    if (event?.event === 'charge.success' && event?.data?.reference && event?.data?.metadata?.tenantId) {
       try {
-        const invoiceId = event.data.metadata.invoiceId;
         const tenantId = event.data.metadata.tenantId;
-        const amountKobo = event.data.amount;
-        await repo.recordInvoicePayment(invoiceId, amountKobo);
-        // Update transaction record
-        try { await repo.updatePaystackTransaction(event.data.reference, { status: 'success', channel: 'card', paidAt: new Date().toISOString(), verifiedAt: new Date().toISOString() }); } catch (_) {}
-        // Queue notification
-        await repo.queueNotification({
-          tenantId,
-          patientId: event.data.metadata.patientId || '',
-          memberId: '',
-          channel: 'email',
-          type: 'payment_received',
-          recipient: event.data.customer?.email || '',
-          subject: 'Payment received',
-          body: `Payment of ₦${(amountKobo).toLocaleString()} was received.`,
-        });
+        const amount = Math.round((event.data.amount || 0) / 100);
+
+        // Wallet top-up flow
+        if (event.data.metadata?.purpose === 'wallet_topup') {
+          const settings = await repo.getSettings(tenantId);
+          const newBalance = (settings?.walletBalance ?? 0) + amount;
+          await repo.upsertSettings(tenantId, { walletBalance: newBalance });
+          await repo.recordWalletTransaction(tenantId, {
+            amount,
+            type: 'credit',
+            reason: 'topup',
+            paystackReference: event.data.reference,
+            description: 'Wallet top-up via Paystack',
+          });
+          try { await repo.updatePaystackTransaction(event.data.reference, { status: 'success', channel: 'card', paidAt: new Date().toISOString(), verifiedAt: new Date().toISOString() }); } catch (_) {}
+          return reply.code(200).send({ ok: true });
+        }
+
+        // Invoice payment flow
+        if (event.data.metadata?.invoiceId) {
+          const invoiceId = event.data.metadata.invoiceId;
+          await repo.recordInvoicePayment(invoiceId, amount);
+          // Update transaction record
+          try { await repo.updatePaystackTransaction(event.data.reference, { status: 'success', channel: 'card', paidAt: new Date().toISOString(), verifiedAt: new Date().toISOString() }); } catch (_) {}
+          // Queue notification
+          await repo.queueNotification({
+            tenantId,
+            patientId: event.data.metadata.patientId || '',
+            memberId: '',
+            channel: 'email',
+            type: 'payment_received',
+            recipient: event.data.customer?.email || '',
+            subject: 'Payment received',
+            body: `Payment of ₦${(amount).toLocaleString()} was received.`,
+          });
+        }
       } catch (_) {}
     }
     return reply.code(200).send({ ok: true });

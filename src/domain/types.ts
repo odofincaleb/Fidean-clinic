@@ -51,6 +51,7 @@ export interface Member {
 export interface Patient {
   id: string;
   tenantId: string;
+  branchId?: string;
   patientCode: string;
   clinicPatientId?: string;
   firstName: string;
@@ -392,6 +393,22 @@ export interface ClinicSettings {
   smtpFromName: string;
   createdAt: string;
   updatedAt: string;
+  walletBalance: number;
+  messagingEnabled: boolean;
+  whatsappCostPerMsg: number;
+  smsCostPerMsg: number;
+}
+
+export interface WalletTransaction {
+  id: string;
+  tenantId: string;
+  amount: number;
+  type: 'credit' | 'debit';
+  reason: 'topup' | 'whatsapp_msg' | 'sms_msg';
+  messageLogId?: string;
+  paystackReference?: string;
+  description?: string;
+  createdAt: string;
 }
 
 export interface PaystackTransaction {

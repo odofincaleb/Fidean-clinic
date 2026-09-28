@@ -11,6 +11,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerClinicalRoutes } from './routes/clinical.js';
 import { registerMessagesRoutes } from './routes/messages.js';
 import { registerPaymentsRoutes } from './routes/payments.js';
+import { registerWalletRoutes } from './routes/wallet.js';
 import { registerPortalRoutes } from './routes/portal.js';
 import { registerReportsRoutes } from './routes/reports.js';
 import { registerSettingsRoutes } from './routes/settings.js';
@@ -56,8 +57,8 @@ const memberPatch = z.object({
   qualifications: z.string().optional(),
   licenseNumber: z.string().optional(),
 });
-const patientInput = z.object({ tenantId: z.string().min(1), clinicPatientId: z.string().optional(), firstName: z.string().min(1), lastName: z.string().optional(), phone: z.string().optional(), email: z.string().email().optional(), altPhone: z.string().optional(), dob: z.string().optional(), gender: z.string().optional(), bloodGroup: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), medicalHistory: z.string().optional() });
-const patientPatch = z.object({ clinicPatientId: z.string().optional(), firstName: z.string().min(1).optional(), lastName: z.string().optional(), phone: z.string().min(5).optional(), email: z.string().email().optional(), altPhone: z.string().optional(), dob: z.string().optional(), gender: z.string().optional(), bloodGroup: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), medicalHistory: z.string().optional() });
+const patientInput = z.object({ tenantId: z.string().min(1), branchId: z.string().optional(), clinicPatientId: z.string().optional(), firstName: z.string().min(1), lastName: z.string().optional(), phone: z.string().optional(), email: z.string().email().optional(), altPhone: z.string().optional(), dob: z.string().optional(), gender: z.string().optional(), bloodGroup: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), medicalHistory: z.string().optional() });
+const patientPatch = z.object({ branchId: z.string().optional(), clinicPatientId: z.string().optional(), firstName: z.string().min(1).optional(), lastName: z.string().optional(), phone: z.string().min(5).optional(), email: z.string().email().optional(), altPhone: z.string().optional(), dob: z.string().optional(), gender: z.string().optional(), bloodGroup: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), medicalHistory: z.string().optional() });
 const patientImportMapping = z.object({
   clinicPatientId: z.string().optional(),
   firstName: z.string(),
@@ -79,6 +80,7 @@ const patientBulkImportInput = z.object({
   content: z.string().optional(),
   rows: z.array(z.record(z.string(), z.unknown())).optional(),
   mapping: patientImportMapping,
+  branchId: z.string().optional(),
 });
 
 function parseCsv(content: string): Record<string, string>[] {
@@ -168,6 +170,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
   registerSettingsRoutes(app, repo);
   registerReportsRoutes(app, repo);
   registerPaymentsRoutes(app, repo);
+  registerWalletRoutes(app, repo);
   registerMessagesRoutes(app, repo);
   registerPortalRoutes(app, repo);
   registerSyncRoutes(app, repo);
@@ -350,7 +353,10 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
   app.get('/api/patients', async (request) => {
     const auth = await requireAuth(request, repo);
     assertCan(auth.member.role, 'view_patients');
-    return { ok: true, patients: await repo.listPatients(auth.tenantId) };
+    const query = z.object({ branchId: z.string().optional() }).parse(request.query);
+    const patients = await repo.listPatients(auth.tenantId);
+    const filtered = query.branchId ? patients.filter((p) => p.branchId === query.branchId) : patients;
+    return { ok: true, patients: filtered };
   });
 
   app.post('/api/patients', async (request, reply) => {
@@ -360,7 +366,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     }
     const input = patientInput.parse(request.body);
     assertSameTenant(auth.tenantId, input.tenantId);
-    return reply.code(201).send({ ok: true, patient: await repo.createPatient(input) });
+    return reply.code(201).send({ ok: true, patient: await repo.createPatient(input as PatientInput) });
   });
 
   app.post('/api/patients/bulk-import', async (request) => {
@@ -379,6 +385,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     for (const [index, row] of rows.entries()) {
       const mapped = {
         tenantId: input.tenantId,
+        branchId: input.branchId,
         clinicPatientId: input.mapping.clinicPatientId ? normalizeImportCell(row[input.mapping.clinicPatientId]) : undefined,
         firstName: normalizeImportCell(row[input.mapping.firstName]) ?? '',
         lastName: input.mapping.lastName ? normalizeImportCell(row[input.mapping.lastName]) : undefined,

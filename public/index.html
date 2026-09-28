@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=47" />
+  <link rel="stylesheet" href="/style.css?v=49" />
 <script src="/mobile-fix.js"></script>
 </head>
 <body>
@@ -266,6 +266,13 @@
             <p>Upload CSV or Excel, map your clinic columns, then import. Use the sample file to match Patient ID, names, phone, email, gender, blood group, address, and medical history.</p>
           </div>
           <div class="bulk-actions">
+            <label style="flex:1;min-width:160px">Target branch
+              <select id="patient-import-branch" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:.85rem;width:100%">
+                <option value="">No branch (unassigned)</option>
+              </select>
+            </label>
+          </div>
+          <div class="bulk-actions" style="margin-top:8px">
             <button type="button" id="download-patient-template">Download sample CSV</button>
             <button type="button" id="download-patient-xlsx-template">Download sample Excel</button>
             <input type="file" id="patient-import-file" accept=".csv,.xlsx,.xls" />
@@ -277,7 +284,13 @@
       </section>
       <section class="panel tab-panel" id="patients">
         <h2>Patients</h2>
-        <div class="patient-search"><input id="patient-search-input" type="text" placeholder="Search patients by name, clinic ID, phone, code..." /></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+          <label style="font-size:.85rem;font-weight:600;white-space:nowrap">Branch:</label>
+          <select id="patient-branch-filter" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:.85rem;flex:0 0 180px">
+            <option value="">All branches</option>
+          </select>
+          <div class="patient-search" style="flex:1"><input id="patient-search-input" type="text" placeholder="Search patients by name, clinic ID, phone, code..." /></div>
+        </div>
         <div id="patient-list" class="cards"></div>
         <div id="patient-detail" class="detail-panel" hidden>
           <button class="back-btn" id="patient-detail-back">← Back to patients</button>
@@ -432,12 +445,13 @@
             <label>Specialist Canvas:</label>
             <select id="diagram-type" class="diagram-type-select">
               <option value="">None (general encounter)</option>
-              <option value="dental">Dental — Adult Universal (#1–#32)</option>
+              <option value="dental">Dental — Universal (#1–#32)</option>
+              <option value="dental-fdi">Dental — Adult FDI (ISO 3950)</option>
+              <option value="dental-pediatric">Dental — Pediatric FDI (Kids)</option>
               <option value="dermatology">Dermatology — Body Surface Map</option>
               <option value="cardiology">Cardiology — AHA 17-Segment</option>
-              <option value="" disabled>Dental — Adult FDI (11–48) coming next</option>
-              <option value="" disabled>Neurology — Dermatome / ASIA Map coming next</option>
-              <option value="" disabled>Abdomen — 9-Region Map coming next</option>
+              <option value="" disabled>Neurology / ASIA Map coming next</option>
+              <option value="" disabled>Abdomen 9-Region Map coming next</option>
             </select>
           </div>
           <div id="diagram-render-area"></div>
@@ -628,6 +642,58 @@
           <button type="submit">Send message</button>
         </form>
         <div id="staff-message-list" class="cards"></div>
+
+        <hr style="margin:26px 0;border:none;border-top:1px solid #eee" />
+        <h2>📣 Broadcast (WhatsApp / SMS)</h2>
+        <p class="hint">Send a message to multiple patients. Wallet is charged per message. Make sure Messaging is enabled and your wallet has enough balance (Settings → Messaging &amp; Wallet).</p>
+        <div class="form" id="broadcast-form" style="grid-template-columns:1fr">
+          <label>Channel
+            <select id="broadcast-channel">
+              <option value="whatsapp">WhatsApp</option>
+              <option value="sms">SMS</option>
+            </select>
+          </label>
+          <label>Recipients
+            <select id="broadcast-filter">
+              <option value="all">All patients</option>
+              <option value="department">By department</option>
+              <option value="recent">By recent visit</option>
+              <option value="specific">Specific patients</option>
+            </select>
+          </label>
+          <label id="broadcast-department-wrap" style="display:none">Department
+            <input id="broadcast-department" placeholder="e.g. Dental, Cardiology..." />
+          </label>
+          <label id="broadcast-recent-wrap" style="display:none">Visited within (days)
+            <input id="broadcast-recent-days" type="number" min="1" value="30" />
+          </label>
+          <div id="broadcast-specific-wrap" class="broadcast-specific-wrap" style="display:none;margin-top:4px">
+            <label>Search patients
+              <input id="broadcast-patient-search" type="text" placeholder="Type name or phone to filter..." autocomplete="off" />
+            </label>
+            <div id="broadcast-patient-checkbox-list" style="max-height:200px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:6px;background:#fff;margin-top:4px"></div>
+          </div>
+          <label>Message body
+            <textarea id="broadcast-body" rows="4" placeholder="Type your broadcast message..." required></textarea>
+          </label>
+          <div id="broadcast-template-wrap" style="margin-top:4px">
+            <label>WhatsApp template
+              <select id="broadcast-template">
+                <option value="clinic_announcement_msg">📢 Announcement</option>
+                <option value="clinic_appointment_reminder">📅 Appointment Reminder</option>
+                <option value="clinic_payment_receipt_msg">💳 Payment Receipt</option>
+                <option value="clinic_health_tip_msg">🩺 Health Tip</option>
+              </select>
+            </label>
+            <div id="broadcast-template-preview" class="broadcast-template-preview" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;font-size:.85rem;margin-top:6px;line-height:1.6"></div>
+          </div>
+          <div id="broadcast-preview" class="broadcast-preview" style="background:#f8f5ff;border-radius:12px;padding:12px 14px;font-size:.85rem">
+            <strong>0</strong> recipients · Cost: <strong>₦0</strong>
+          </div>
+          <div id="broadcast-balance-warning" style="display:none;background:#fff0f0;border:1px solid #fca5a5;color:#b91c1c;border-radius:10px;padding:10px 14px;font-size:.82rem;margin-top:6px"></div>
+          <button type="button" id="broadcast-send-btn" class="paystack-btn" style="padding:12px">Send broadcast</button>
+          <div id="broadcast-result" class="cards"></div>
+        </div>
       </section>
       <section class="panel tab-panel" id="inventory">
         <h2>Inventory</h2>
@@ -772,6 +838,26 @@
       </div>
       <p id="export-result" class="hint"></p>
     </article>
+    <article class="card-rich">
+      <h3>💬 Messaging & Wallet</h3>
+      <p class="hint">Send WhatsApp / SMS reminders and broadcasts to patients. Pre-fund your wallet via Paystack.</p>
+      <div id="messaging-settings-card" class="form" style="grid-template-columns:1fr">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem">
+          <input type="checkbox" name="messagingEnabled" id="messaging-enabled" /> Enable WhatsApp / SMS messaging
+        </label>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f8f5ff;border-radius:12px;margin-top:6px">
+          <strong style="font-size:1.2rem">₦<span id="wallet-balance-display">0</span></strong>
+          <span style="color:var(--text-tertiary);font-size:.82rem">wallet balance</span>
+          <button type="button" id="wallet-topup-btn" class="tab" style="background:var(--purple);color:#fff;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:700;margin-left:auto">Top Up</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <label>WhatsApp cost/msg (₦) <input type="number" name="whatsappCostPerMsg" id="whatsapp-cost" value="80" min="1" style="width:100%" /></label>
+          <label>SMS cost/msg (₦) <input type="number" name="smsCostPerMsg" id="sms-cost" value="6" min="1" style="width:100%" /></label>
+        </div>
+        <div style="margin-top:6px">
+          <a href="/wallet" style="font-size:.82rem;color:var(--purple)">View wallet transactions →</a>
+        </div>
+      </div>
   </div>
             <h3>Notification Templates</h3>
             <form id="template-form" class="form">
@@ -836,9 +922,9 @@
   </main>
   <div class="success-toast" id="success-toast" hidden role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-  <script src="/specialist-charts.js?v=fix-v2"></script>
+  <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=hmo-v17" type="module"></script>
+  <script src="/app.js?v=hmo-v18" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

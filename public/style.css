@@ -620,6 +620,7 @@ button { border: 0; cursor: pointer; }
 .tooth-cell text { pointer-events: none; }
 .tooth-cell { cursor: pointer; transition: filter .1s; }
 .tooth-cell:hover { filter: drop-shadow(0 3px 5px rgba(102,87,244,.25)); }
+.tooth-cell:focus { outline: none; }
 .tooth-cell:hover .actual-tooth-shape { stroke: var(--purple-strong); stroke-width: 2.4; }
 .tooth-cell:focus .actual-tooth-shape { stroke: var(--purple-strong); stroke-width: 2.4; }
 .specialist-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; justify-content: center; }
@@ -653,6 +654,11 @@ button { border: 0; cursor: pointer; }
 .finding-pill:hover { border-color: var(--purple); }
 .finding-pill.active { border-color: var(--pill-bg, var(--purple)); background: var(--pill-bg, var(--purple)); color: #fff; }
 .finding-pill i { width: 10px; height: 10px; border-radius: 50%; }
+.multi-finding .finding-pill { border-radius: 999px; padding: 6px 14px; font-size: .82rem; background: #fff; border: 1.5px solid #ddd; cursor: pointer; transition: all .12s; }
+.multi-finding .finding-pill.active { border-color: var(--pill-bg, var(--purple)); background: var(--pill-bg, var(--purple)); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.dash-finding-note { color: var(--text-tertiary); font-size: .78rem; }
+.tooth-selected .actual-tooth-shape { stroke: #6C5CE7 !important; stroke-width: 3.5px !important; filter: drop-shadow(0 0 12px rgba(108,92,231,.7)); }
+.tooth-selected { filter: drop-shadow(0 0 14px rgba(108,92,231,.8)) !important; }
 .finding-note { width: 100%; min-height: 40px; padding: 10px 14px; border: 1px solid rgba(102,87,244,.14); border-radius: 12px; font-family: inherit; font-size: .88rem; margin-bottom: 10px; box-sizing: border-box; }
 .finding-actions { display: flex; gap: 10px; }
 .finding-save { flex: 1; }

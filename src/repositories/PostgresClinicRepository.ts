@@ -26,6 +26,7 @@ import type {
   SyncOperationRecord,
   Tenant,
   TenantSnapshot,
+  WalletTransaction,
 } from '../domain/types.js';
 import { applyInvoicePayment, assertScheduleWindow, finalizeInvoiceFields, toPublicPatientAccount, withInvoiceBalance } from '../domain/clinical.js';
 import { assertAppointmentFits } from '../domain/appointmentGuard.js';
@@ -115,6 +116,7 @@ function mapPatient(row: pg.QueryResultRow): Patient {
   return {
     id: row.id,
     tenantId: row.tenant_id,
+    branchId: row.branch_id ?? undefined,
     patientCode: row.patient_code,
     clinicPatientId: row.clinic_patient_id ?? undefined,
     firstName: row.first_name,
@@ -344,8 +346,26 @@ function mapSettings(row: pg.QueryResultRow): ClinicSettings {
     smtpFromEmail: row.smtp_from_email ?? '',
     smtpFromName: row.smtp_from_name ?? '',
       bankTransferEnabled: row.bank_transfer_enabled ?? true,
+    walletBalance: Number(row.wallet_balance) || 0,
+    messagingEnabled: row.messaging_enabled ?? false,
+    whatsappCostPerMsg: Number(row.whatsapp_cost_per_msg) || 80,
+    smsCostPerMsg: Number(row.sms_cost_per_msg) || 6,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
+  };
+}
+
+function mapWalletTransaction(row: pg.QueryResultRow): WalletTransaction {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    amount: Number(row.amount) || 0,
+    type: row.type,
+    reason: row.reason,
+    messageLogId: row.message_log_id ?? undefined,
+    paystackReference: row.paystack_reference ?? undefined,
+    description: row.description ?? undefined,
+    createdAt: iso(row.created_at),
   };
 }
 
@@ -581,16 +601,6 @@ export class PostgresClinicRepository implements ClinicRepository {
     return result.rows.map(mapMember);
   }
 
-  async updateMember(memberId: string, patch: any): Promise<Member> {
-    const sets: string[] = []; const params: any[] = []; let idx = 1;
-    for (const [col, val] of Object.entries({ display_name: patch.displayName, role: patch.role, phone: patch.phone, specialization: patch.specialization })) {
-      if (val !== undefined) { sets.push(`${col} = $${idx}`); params.push(val); idx++; }
-    }
-    if (!sets.length) throw new Error('NO_FIELDS');
-    params.push(memberId);
-    const r = await this.pool.query(`UPDATE tenant_memberships SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`, params);
-    return mapMember(r.rows[0]);
-  }
   async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
     await this.pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
   }
@@ -640,20 +650,20 @@ export class PostgresClinicRepository implements ClinicRepository {
     const tenant = await this.getTenant(input.tenantId);
     if (!tenant) throw notFound('TENANT_NOT_FOUND');
     const result = await this.pool.query(
-      `INSERT INTO patients (tenant_id, patient_code, clinic_patient_id, first_name, last_name, phone, email, alt_phone, dob, gender, blood_group, address, city, state, medical_history)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
-      [input.tenantId, `PAT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, input.clinicPatientId ?? null, input.firstName, input.lastName ?? null, input.phone, input.email?.toLowerCase() ?? null, input.altPhone ?? null, input.dob ?? null, input.gender ?? null, input.bloodGroup ?? null, input.address ?? null, input.city ?? null, input.state ?? null, input.medicalHistory ?? null],
+      `INSERT INTO patients (tenant_id, branch_id, patient_code, clinic_patient_id, first_name, last_name, phone, email, alt_phone, dob, gender, blood_group, address, city, state, medical_history)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
+      [input.tenantId, input.branchId ?? null, `PAT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, input.clinicPatientId ?? null, input.firstName, input.lastName ?? null, input.phone, input.email?.toLowerCase() ?? null, input.altPhone ?? null, input.dob ?? null, input.gender ?? null, input.bloodGroup ?? null, input.address ?? null, input.city ?? null, input.state ?? null, input.medicalHistory ?? null],
     );
     return mapPatient(result.rows[0]);
   }
 
-  async updatePatient(patientId: string, patch: Partial<Pick<Patient, 'clinicPatientId' | 'firstName' | 'lastName' | 'phone' | 'email' | 'altPhone' | 'dob' | 'gender' | 'bloodGroup' | 'address' | 'city' | 'state' | 'medicalHistory'>>): Promise<Patient> {
+  async updatePatient(patientId: string, patch: Partial<Pick<Patient, 'branchId' | 'clinicPatientId' | 'firstName' | 'lastName' | 'phone' | 'email' | 'altPhone' | 'dob' | 'gender' | 'bloodGroup' | 'address' | 'city' | 'state' | 'medicalHistory'>>): Promise<Patient> {
     const current = await this.getPatient(patientId);
     if (!current) throw notFound('PATIENT_NOT_FOUND');
     const result = await this.pool.query(
-      `UPDATE patients SET clinic_patient_id = $2, first_name = $3, last_name = $4, phone = $5, email = $6, alt_phone = $7, dob = $8, gender = $9, blood_group = $10, address = $11, city = $12, state = $13, medical_history = $14, updated_at = now()
+      `UPDATE patients SET branch_id = $2, clinic_patient_id = $3, first_name = $4, last_name = $5, phone = $6, email = $7, alt_phone = $8, dob = $9, gender = $10, blood_group = $11, address = $12, city = $13, state = $14, medical_history = $15, updated_at = now()
        WHERE id = $1 RETURNING *`,
-      [patientId, patch.clinicPatientId ?? current.clinicPatientId ?? null, patch.firstName ?? current.firstName, patch.lastName ?? current.lastName ?? null, patch.phone ?? current.phone, patch.email ?? current.email ?? null, patch.altPhone ?? current.altPhone ?? null, patch.dob ?? current.dob ?? null, patch.gender ?? current.gender ?? null, patch.bloodGroup ?? current.bloodGroup ?? null, patch.address ?? current.address ?? null, patch.city ?? current.city ?? null, patch.state ?? current.state ?? null, patch.medicalHistory ?? current.medicalHistory ?? null],
+      [patientId, patch.branchId ?? current.branchId ?? null, patch.clinicPatientId ?? current.clinicPatientId ?? null, patch.firstName ?? current.firstName, patch.lastName ?? current.lastName ?? null, patch.phone ?? current.phone, patch.email ?? current.email ?? null, patch.altPhone ?? current.altPhone ?? null, patch.dob ?? current.dob ?? null, patch.gender ?? current.gender ?? null, patch.bloodGroup ?? current.bloodGroup ?? null, patch.address ?? current.address ?? null, patch.city ?? current.city ?? null, patch.state ?? current.state ?? null, patch.medicalHistory ?? current.medicalHistory ?? null],
     );
     return mapPatient(result.rows[0]);
   }
@@ -1415,14 +1425,14 @@ export class PostgresClinicRepository implements ClinicRepository {
     const existing = await this.getSettings(tenantId);
     if (existing) {
       const result = await this.pool.query(
-        `UPDATE clinic_settings SET clinic_name=$1, clinic_address=$2, clinic_logo_url=$3, brand_primary_color=$4, brand_accent_color=$5, notification_templates=$6, paystack_public_key=$7, paystack_secret_key=$8, bank_name=$9, bank_account_name=$10, bank_account_number=$11, smtp_host=$12, smtp_port=$13, smtp_user=$14, smtp_pass=$15, smtp_from_email=$16, smtp_from_name=$17, updated_at=now() WHERE tenant_id=$18 RETURNING *`,
-        [data.clinicName || existing.clinicName, data.clinicAddress || existing.clinicAddress, data.clinicLogoUrl || existing.clinicLogoUrl, data.brandPrimaryColor || existing.brandPrimaryColor, data.brandAccentColor || existing.brandAccentColor, JSON.stringify(data.notificationTemplates || existing.notificationTemplates), data.paystackPublicKey ?? existing.paystackPublicKey, data.paystackSecretKey ?? existing.paystackSecretKey, data.bankName ?? existing.bankName, data.bankAccountName ?? existing.bankAccountName, data.bankAccountNumber ?? existing.bankAccountNumber, data.smtpHost ?? existing.smtpHost, data.smtpPort ?? existing.smtpPort, data.smtpUser ?? existing.smtpUser, data.smtpPass ?? existing.smtpPass, data.smtpFromEmail ?? existing.smtpFromEmail, data.smtpFromName ?? existing.smtpFromName, tenantId],
+        `UPDATE clinic_settings SET clinic_name=$1, clinic_address=$2, clinic_logo_url=$3, brand_primary_color=$4, brand_accent_color=$5, notification_templates=$6, paystack_public_key=$7, paystack_secret_key=$8, bank_name=$9, bank_account_name=$10, bank_account_number=$11, smtp_host=$12, smtp_port=$13, smtp_user=$14, smtp_pass=$15, smtp_from_email=$16, smtp_from_name=$17, wallet_balance=$18, messaging_enabled=$19, whatsapp_cost_per_msg=$20, sms_cost_per_msg=$21, updated_at=now() WHERE tenant_id=$22 RETURNING *`,
+        [data.clinicName || existing.clinicName, data.clinicAddress || existing.clinicAddress, data.clinicLogoUrl || existing.clinicLogoUrl, data.brandPrimaryColor || existing.brandPrimaryColor, data.brandAccentColor || existing.brandAccentColor, JSON.stringify(data.notificationTemplates || existing.notificationTemplates), data.paystackPublicKey ?? existing.paystackPublicKey, data.paystackSecretKey ?? existing.paystackSecretKey, data.bankName ?? existing.bankName, data.bankAccountName ?? existing.bankAccountName, data.bankAccountNumber ?? existing.bankAccountNumber, data.smtpHost ?? existing.smtpHost, data.smtpPort ?? existing.smtpPort, data.smtpUser ?? existing.smtpUser, data.smtpPass ?? existing.smtpPass, data.smtpFromEmail ?? existing.smtpFromEmail, data.smtpFromName ?? existing.smtpFromName, data.walletBalance ?? existing.walletBalance, data.messagingEnabled ?? existing.messagingEnabled, data.whatsappCostPerMsg ?? existing.whatsappCostPerMsg, data.smsCostPerMsg ?? existing.smsCostPerMsg, tenantId],
       );
       return mapSettings(result.rows[0]);
     } else {
       const result = await this.pool.query(
-        `INSERT INTO clinic_settings (tenant_id, clinic_name, clinic_address, clinic_logo_url, brand_primary_color, brand_accent_color, notification_templates, paystack_public_key, paystack_secret_key, bank_name, bank_account_name, bank_account_number, bank_transfer_enabled, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email, smtp_from_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
-        [tenantId, data.clinicName || '', data.clinicAddress || '', data.clinicLogoUrl || '', data.brandPrimaryColor || '#66f2ea', data.brandAccentColor || '#3b82f6', JSON.stringify(data.notificationTemplates || {}), data.paystackPublicKey || '', data.paystackSecretKey || '', data.bankName || '', data.bankAccountName || '', data.bankAccountNumber || '', data.bankTransferEnabled ?? true, data.smtpHost || '', data.smtpPort ?? 587, data.smtpUser || '', data.smtpPass || '', data.smtpFromEmail || '', data.smtpFromName || ''],
+        `INSERT INTO clinic_settings (tenant_id, clinic_name, clinic_address, clinic_logo_url, brand_primary_color, brand_accent_color, notification_templates, paystack_public_key, paystack_secret_key, bank_name, bank_account_name, bank_account_number, bank_transfer_enabled, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from_email, smtp_from_name, wallet_balance, messaging_enabled, whatsapp_cost_per_msg, sms_cost_per_msg) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
+        [tenantId, data.clinicName || '', data.clinicAddress || '', data.clinicLogoUrl || '', data.brandPrimaryColor || '#66f2ea', data.brandAccentColor || '#3b82f6', JSON.stringify(data.notificationTemplates || {}), data.paystackPublicKey || '', data.paystackSecretKey || '', data.bankName || '', data.bankAccountName || '', data.bankAccountNumber || '', data.bankTransferEnabled ?? true, data.smtpHost || '', data.smtpPort ?? 587, data.smtpUser || '', data.smtpPass || '', data.smtpFromEmail || '', data.smtpFromName || '', data.walletBalance ?? 0, data.messagingEnabled ?? false, data.whatsappCostPerMsg ?? 80, data.smsCostPerMsg ?? 6],
       );
       return mapSettings(result.rows[0]);
     }
@@ -1457,10 +1467,10 @@ export class PostgresClinicRepository implements ClinicRepository {
   }
 
   // Paystack
-  async createPaystackTransaction(tenantId: string, invoiceId: string, reference: string, amountKobo: number): Promise<PaystackTransaction> {
+  async createPaystackTransaction(tenantId: string, invoiceId: string | undefined, reference: string, amountKobo: number): Promise<PaystackTransaction> {
     const result = await this.pool.query(
       'INSERT INTO paystack_transactions (tenant_id, invoice_id, reference, amount_kobo) VALUES ($1,$2,$3,$4) RETURNING *',
-      [tenantId, invoiceId, reference, amountKobo],
+      [tenantId, invoiceId ?? null, reference, amountKobo],
     );
     return mapPaystackTx(result.rows[0]);
   }
@@ -1513,6 +1523,34 @@ export class PostgresClinicRepository implements ClinicRepository {
       [tenantId, limit],
     );
     return result.rows.map((r: pg.QueryResultRow) => mapMessageLog(r));
+  }
+
+  // Wallet
+  async getWalletTransactions(tenantId: string, limit = 50): Promise<WalletTransaction[]> {
+    const result = await this.pool.query(
+      'SELECT * FROM wallet_transactions WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT $2',
+      [tenantId, limit],
+    );
+    return result.rows.map((r: pg.QueryResultRow) => mapWalletTransaction(r));
+  }
+
+  async recordWalletTransaction(
+    tenantId: string,
+    data: {
+      amount: number;
+      type: WalletTransaction['type'];
+      reason: WalletTransaction['reason'];
+      messageLogId?: string;
+      paystackReference?: string;
+      description?: string;
+    },
+  ): Promise<WalletTransaction> {
+    const result = await this.pool.query(
+      `INSERT INTO wallet_transactions (tenant_id, amount, type, reason, message_log_id, paystack_reference, description)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [tenantId, data.amount, data.type, data.reason, data.messageLogId ?? null, data.paystackReference ?? null, data.description ?? null],
+    );
+    return mapWalletTransaction(result.rows[0]);
   }
 
   // Referrals

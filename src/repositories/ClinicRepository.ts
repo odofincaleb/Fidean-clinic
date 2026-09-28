@@ -28,6 +28,7 @@ import type {
   SyncOperationRecord,
   Tenant,
   TenantSnapshot,
+  WalletTransaction,
 } from '../domain/types.js';
 
 export interface TenantInput {
@@ -56,6 +57,7 @@ export interface MemberInput {
 
 export interface PatientInput {
   tenantId: string;
+  branchId?: string;
   clinicPatientId?: string;
   firstName: string;
   lastName?: string;
@@ -252,7 +254,7 @@ export interface ClinicRepository {
   listPatients(tenantId: string): Promise<Patient[]>;
   getPatient(patientId: string): Promise<Patient | undefined>;
   createPatient(input: PatientInput): Promise<Patient>;
-  updatePatient(patientId: string, patch: Partial<Pick<Patient, 'clinicPatientId' | 'firstName' | 'lastName' | 'phone' | 'email' | 'altPhone' | 'dob' | 'gender' | 'bloodGroup' | 'address' | 'city' | 'state' | 'medicalHistory'>>): Promise<Patient>;
+  updatePatient(patientId: string, patch: Partial<Pick<Patient, 'branchId' | 'clinicPatientId' | 'firstName' | 'lastName' | 'phone' | 'email' | 'altPhone' | 'dob' | 'gender' | 'bloodGroup' | 'address' | 'city' | 'state' | 'medicalHistory'>>): Promise<Patient>;
 
   listServices(tenantId: string): Promise<Service[]>;
   getService(serviceId: string): Promise<Service | undefined>;
@@ -411,8 +413,19 @@ export interface ClinicRepository {
   }>;
 
   // Paystack
-  createPaystackTransaction(tenantId: string, invoiceId: string, reference: string, amountKobo: number): Promise<PaystackTransaction>;
+  createPaystackTransaction(tenantId: string, invoiceId: string | undefined, reference: string, amountKobo: number): Promise<PaystackTransaction>;
   updatePaystackTransaction(reference: string, data: { status?: string; channel?: string; paidAt?: string; verifiedAt?: string }): Promise<PaystackTransaction>;
+
+  // Wallet
+  getWalletTransactions(tenantId: string, limit?: number): Promise<WalletTransaction[]>;
+  recordWalletTransaction(tenantId: string, data: {
+    amount: number;
+    type: WalletTransaction['type'];
+    reason: WalletTransaction['reason'];
+    messageLogId?: string;
+    paystackReference?: string;
+    description?: string;
+  }): Promise<WalletTransaction>;
 
   // Messages
   createMessageLog(tenantId: string, data: { channel: string; recipient: string; subject?: string; body: string }): Promise<MessageLog>;

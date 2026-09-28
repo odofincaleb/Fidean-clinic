@@ -46,6 +46,75 @@
     { id: '32', arch: 'lower', side: 'right', name: 'Third Molar' },
   ];
 
+  /* ── Dental: FDI (ISO 3950) Numbering System — Adult Permanent ──
+   * Two-digit: quadrant (1–4) + tooth (1–8 from midline).
+   * Upper right: 11–18, Upper left: 21–28
+   * Lower left: 31–38, Lower right: 41–48
+   */
+  const FDI_PERMANENT_TEETH = [
+    { id: '18', arch: 'upper', side: 'right', name: 'Third Molar', quad: '1' },
+    { id: '17', arch: 'upper', side: 'right', name: 'Second Molar', quad: '1' },
+    { id: '16', arch: 'upper', side: 'right', name: 'First Molar', quad: '1' },
+    { id: '15', arch: 'upper', side: 'right', name: 'Second Bicuspid', quad: '1' },
+    { id: '14', arch: 'upper', side: 'right', name: 'First Bicuspid', quad: '1' },
+    { id: '13', arch: 'upper', side: 'right', name: 'Canine', quad: '1' },
+    { id: '12', arch: 'upper', side: 'right', name: 'Lateral Incisor', quad: '1' },
+    { id: '11', arch: 'upper', side: 'right', name: 'Central Incisor', quad: '1' },
+    { id: '21', arch: 'upper', side: 'left', name: 'Central Incisor', quad: '2' },
+    { id: '22', arch: 'upper', side: 'left', name: 'Lateral Incisor', quad: '2' },
+    { id: '23', arch: 'upper', side: 'left', name: 'Canine', quad: '2' },
+    { id: '24', arch: 'upper', side: 'left', name: 'First Bicuspid', quad: '2' },
+    { id: '25', arch: 'upper', side: 'left', name: 'Second Bicuspid', quad: '2' },
+    { id: '26', arch: 'upper', side: 'left', name: 'First Molar', quad: '2' },
+    { id: '27', arch: 'upper', side: 'left', name: 'Second Molar', quad: '2' },
+    { id: '28', arch: 'upper', side: 'left', name: 'Third Molar', quad: '2' },
+    { id: '31', arch: 'lower', side: 'left', name: 'Third Molar', quad: '3' },
+    { id: '32', arch: 'lower', side: 'left', name: 'Second Molar', quad: '3' },
+    { id: '33', arch: 'lower', side: 'left', name: 'First Molar', quad: '3' },
+    { id: '34', arch: 'lower', side: 'left', name: 'Second Bicuspid', quad: '3' },
+    { id: '35', arch: 'lower', side: 'left', name: 'First Bicuspid', quad: '3' },
+    { id: '36', arch: 'lower', side: 'left', name: 'Canine', quad: '3' },
+    { id: '37', arch: 'lower', side: 'left', name: 'Lateral Incisor', quad: '3' },
+    { id: '38', arch: 'lower', side: 'left', name: 'Central Incisor', quad: '3' },
+    { id: '41', arch: 'lower', side: 'right', name: 'Central Incisor', quad: '4' },
+    { id: '42', arch: 'lower', side: 'right', name: 'Lateral Incisor', quad: '4' },
+    { id: '43', arch: 'lower', side: 'right', name: 'Canine', quad: '4' },
+    { id: '44', arch: 'lower', side: 'right', name: 'First Bicuspid', quad: '4' },
+    { id: '45', arch: 'lower', side: 'right', name: 'Second Bicuspid', quad: '4' },
+    { id: '46', arch: 'lower', side: 'right', name: 'First Molar', quad: '4' },
+    { id: '47', arch: 'lower', side: 'right', name: 'Second Molar', quad: '4' },
+    { id: '48', arch: 'lower', side: 'right', name: 'Third Molar', quad: '4' },
+  ];
+
+  /* ── Dental: FDI (ISO 3950) Numbering System — Pediatric / Primary (Deciduous) ──
+   * Two-digit: quadrant (5–8) + tooth (1–5 from midline).
+   * Upper right: 51–55, Upper left: 61–65
+   * Lower left: 71–75, Lower right: 81–85
+   * Only 5 teeth per quadrant — no premolars/bicuspids in primary dentition.
+   */
+  const FDI_PEDIATRIC_TEETH = [
+    { id: '55', arch: 'upper', side: 'right', name: 'Second Molar', quad: '5' },
+    { id: '54', arch: 'upper', side: 'right', name: 'First Molar', quad: '5' },
+    { id: '53', arch: 'upper', side: 'right', name: 'Canine', quad: '5' },
+    { id: '52', arch: 'upper', side: 'right', name: 'Lateral Incisor', quad: '5' },
+    { id: '51', arch: 'upper', side: 'right', name: 'Central Incisor', quad: '5' },
+    { id: '61', arch: 'upper', side: 'left', name: 'Central Incisor', quad: '6' },
+    { id: '62', arch: 'upper', side: 'left', name: 'Lateral Incisor', quad: '6' },
+    { id: '63', arch: 'upper', side: 'left', name: 'Canine', quad: '6' },
+    { id: '64', arch: 'upper', side: 'left', name: 'First Molar', quad: '6' },
+    { id: '65', arch: 'upper', side: 'left', name: 'Second Molar', quad: '6' },
+    { id: '71', arch: 'lower', side: 'left', name: 'Central Incisor', quad: '7' },
+    { id: '72', arch: 'lower', side: 'left', name: 'Lateral Incisor', quad: '7' },
+    { id: '73', arch: 'lower', side: 'left', name: 'Canine', quad: '7' },
+    { id: '74', arch: 'lower', side: 'left', name: 'First Molar', quad: '7' },
+    { id: '75', arch: 'lower', side: 'left', name: 'Second Molar', quad: '7' },
+    { id: '81', arch: 'lower', side: 'right', name: 'Central Incisor', quad: '8' },
+    { id: '82', arch: 'lower', side: 'right', name: 'Lateral Incisor', quad: '8' },
+    { id: '83', arch: 'lower', side: 'right', name: 'Canine', quad: '8' },
+    { id: '84', arch: 'lower', side: 'right', name: 'First Molar', quad: '8' },
+    { id: '85', arch: 'lower', side: 'right', name: 'Second Molar', quad: '8' },
+  ];
+
   const FINDING_OPTIONS = [
     { value: 'caries', label: 'Decay / Caries', color: '#b45309' },
     { value: 'filling', label: 'Filling', color: '#2563eb' },
@@ -190,6 +259,143 @@
       if (!cell) return;
       e.preventDefault();
       onSelect(cell.dataset.toothId, cell);
+    });
+  }
+
+  /* ── Realistic tooth SVG paths for each tooth type ── */
+  /* Each shape: crown at top, root(s) at bottom. Upper teeth are flipped vertically. */
+  function getToothPath(type, arch) {
+    /* Molars (wide body, 2 roots for lower, 3 for upper) */
+    const molar = arch === 'upper'
+      ? 'M8 2 C12 0 20 0 24 2 L26 10 C27 14 27 18 26 22 L24 28 C22 32 20 36 18 38 L16 34 L14 38 C12 36 10 32 8 28 L6 22 C5 18 5 14 6 10 Z'
+      : 'M8 30 C12 32 20 32 24 30 L26 22 C27 18 27 14 26 10 L24 6 C22 2 20 0 18 0 L16 2 L14 0 C12 0 10 2 8 6 L6 10 C5 14 5 18 6 22 Z';
+    /* Premolar (wider crown, single root) */
+    const premolar = arch === 'upper'
+      ? 'M9 4 C13 2 19 2 23 4 L25 10 C26 14 25 20 22 26 L20 30 L18 34 L16 32 L14 34 L12 30 L10 26 C7 20 6 14 7 10 Z'
+      : 'M9 28 C13 30 19 30 23 28 L25 22 C26 18 25 12 22 8 L20 4 L18 0 L16 2 L14 0 L12 4 L10 8 C7 12 6 18 7 22 Z';
+    /* Canine (pointed crown, long single root) */
+    const canine = arch === 'upper'
+      ? 'M10 4 C13 2 19 2 22 4 L23 10 L22 18 L20 26 L18 34 L16 36 L14 34 L12 26 L10 18 L9 10 Z'
+      : 'M10 28 C13 30 19 30 22 28 L23 22 L22 14 L20 8 L18 0 L16 -2 L14 0 L12 8 L10 14 L9 22 Z';
+    /* Incisor (flat crown, single root) */
+    const incisor = arch === 'upper'
+      ? 'M11 4 C14 2 18 2 21 4 L22 10 L21 18 L19 28 L17 34 L15 36 L13 34 L11 28 L9 18 L8 10 Z'
+      : 'M11 28 C14 30 18 30 21 28 L22 22 L21 14 L19 6 L17 0 L15 -2 L13 0 L11 6 L9 14 L8 22 Z';
+
+    if (type.includes('Molar') || type === 'Third Molar' || type === 'Second Molar' || type === 'First Molar') return molar;
+    if (type.includes('Bicuspid') || type === 'First Bicuspid' || type === 'Second Bicuspid') return premolar;
+    if (type.includes('Canine') || type === 'Cuspid' || type === 'Canine') return canine;
+    return incisor; // Central Incisor, Lateral Incisor
+  }
+
+  /* ── Multi-tooth selection support ── */
+  const selectedTeeth = new Set();
+
+  function toggleToothSelection(toothId, cellEl) {
+    if (selectedTeeth.has(toothId)) {
+      selectedTeeth.delete(toothId);
+      cellEl.classList.remove('tooth-selected');
+    } else {
+      selectedTeeth.add(toothId);
+      cellEl.classList.add('tooth-selected');
+    }
+    updateSelectionHeader();
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('.tooth-selected').forEach(el => el.classList.remove('tooth-selected'));
+    selectedTeeth.clear();
+    updateSelectionHeader();
+  }
+
+  function updateSelectionHeader() {
+    const panel = document.querySelector('.specialist-finding-panel');
+    if (!panel) return;
+    const header = panel.querySelector('h4');
+    if (!header) return;
+    if (selectedTeeth.size > 1) {
+      header.textContent = `🦷 ${selectedTeeth.size} teeth selected (click to add/remove)`;
+    } else if (selectedTeeth.size === 1) {
+      const first = selectedTeeth.values().next().value;
+      const allTeeth = [...(window.FDI_PERMANENT_TEETH || []), ...(window.FDI_PEDIATRIC_TEETH || [])];
+      const tooth = allTeeth.find(t => t.id === first) || { id: first, name: 'Tooth' };
+      header.innerHTML = `Tooth #${tooth.id} — ${escapeHtmlAttr(tooth.name)}`;
+    } else {
+      header.textContent = 'Click teeth to select, then choose finding';
+    }
+  }
+
+  /* ── Render FDI tooth chart with two straight rows ── */
+  function renderFdiToothChartSvg(teethArray, title, container, findings = {}, onSelect = () => {}) {
+    const upper = teethArray.filter((t) => t.arch === 'upper').sort((a, b) => parseInt(a.quad) - parseInt(b.quad));
+    const lower = teethArray.filter((t) => t.arch === 'lower').sort((a, b) => parseInt(b.quad) - parseInt(a.quad));
+    const toothW = 32, toothH = 44, gap = 4;
+    const upperY = 90, lowerY = 240;
+    const totalW = upper.length * (toothW + gap) + 80;
+    const startX = Math.max(60, (640 - totalW) / 2);
+    const viewW = 640, viewH = 450;
+    const cells = [];
+
+    [upper, lower].forEach((row, rowIdx) => {
+      const baseY = rowIdx === 0 ? upperY : lowerY;
+      const isUpper = rowIdx === 0;
+      row.forEach((tooth, idx) => {
+        const find = findings[tooth.id] || {};
+        const multiVals = find.values || (find.value ? [find.value] : []);
+        const finding = multiVals.length > 0 ? FINDING_BY_VALUE[multiVals[0]] : null;
+        const hasMulti = multiVals.length > 1;
+        const x = startX + idx * (toothW + gap);
+        const y = isUpper ? baseY : baseY;
+        const toothFill = finding ? finding.color : '#fff7fb';
+        const stroke = find.note ? '#dc2626' : '#c0a0b0';
+        const labelFill = finding ? '#ffffff' : '#4a3f8f';
+        const path = getToothPath(tooth.name, isUpper ? 'upper' : 'lower');
+        const flipY = isUpper ? '' : ' scale(1,-1) translate(0,-44)';
+        const numberY = isUpper ? upperY - 8 : lowerY + toothH + 12;
+        const hitY = isUpper ? y - 6 : y - 4;
+const hitH = toothH + 16;
+cells.push(`<g data-tooth-id="${tooth.id}" class="tooth-cell" role="button" tabindex="0" aria-label="Tooth ${tooth.id} ${escapeHtmlAttr(tooth.name)}" data-finding="${find.value || ''}">
+          <rect class="tooth-hit-area" x="${x}" y="${hitY}" width="${toothW}" height="${hitH}" rx="8" fill="transparent" pointer-events="all" />
+          <g transform="translate(${x},${y})${flipY}">
+            <path d="${path}" fill="${toothFill}" opacity="${finding ? '0.96' : '0.92'}" stroke="${stroke}" stroke-width="1.5" />
+          </g>
+          <text x="${x + toothW/2}" y="${numberY}" text-anchor="middle" font-size="10" font-weight="900" fill="${labelFill}">${tooth.id}</text>
+          ${hasMulti ? `<circle cx="${x + toothW - 6}" cy="${numberY - 8}" r="6" fill="#6C5CE7" stroke="#fff" stroke-width="1" /><text x="${x + toothW - 6}" y="${numberY - 5}" text-anchor="middle" font-size="7" font-weight="900" fill="#fff">${multiVals.length}</text>` : ''}
+        </g>`);
+      });
+    });
+
+    container.innerHTML = `
+      <div class="specialist-diagram-card universal-dental-card">
+        <div class="specialist-diagram-head">
+          <strong>${escapeHtmlAttr(title)}</strong>
+          <span class="specialist-hint">Click a tooth to add findings</span>
+        </div>
+        <svg class="tooth-chart-svg" viewBox="0 0 ${viewW} ${viewH}" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="${viewW-16}" height="${viewH-16}" rx="24" fill="#f8f5ff" stroke="#e0daf8" />
+          <text x="12" y="${upperY + 20}" font-size="11" font-weight="800" fill="#6b5cb8">RIGHT</text>
+          <text x="${viewW - 70}" y="${upperY + 20}" font-size="11" font-weight="800" fill="#6b5cb8">LEFT</text>
+          <text x="${viewW/2}" y="${upperY - 35}" text-anchor="middle" font-size="14" font-weight="900" fill="#4a3f8f">UPPER</text>
+          <text x="${viewW/2}" y="${lowerY + toothH + 50}" text-anchor="middle" font-size="14" font-weight="900" fill="#4a3f8f">LOWER</text>
+          ${cells.join('')}
+        </svg>
+        <div class="specialist-legend">
+          ${FINDING_OPTIONS.map((f) => `<span class="legend-item"><i style="background:${f.color}"></i>${f.label}</span>`).join('')}
+        </div>
+      </div>`;
+
+    const svg = container.querySelector('svg');
+    svg.addEventListener('click', (e) => { 
+      const cell = e.target.closest('.tooth-cell'); 
+      if (cell) {
+        toggleToothSelection(cell.dataset.toothId, cell);
+        onSelect(cell.dataset.toothId, cell);
+      }
+    });
+    svg.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const cell = e.target.closest('.tooth-cell');
+      if (cell) { e.preventDefault(); onSelect(cell.dataset.toothId, cell); }
     });
   }
 
@@ -399,6 +605,107 @@
     });
   }
 
+  function describeFdiTarget(teethArray, toothId) {
+    const tooth = teethArray.find((t) => t.id === String(toothId));
+    if (!tooth) return `FDI Tooth ${toothId}`;
+    const arch = tooth.arch === 'upper' ? 'Upper' : 'Lower';
+    const side = tooth.side === 'right' ? 'Right' : 'Left';
+    return `FDI ${tooth.id} — ${arch} ${side} ${tooth.name} (Quadrant ${tooth.quad})`;
+  }
+
+  function fdiCoordinates(teethArray, toothId) {
+    const tooth = teethArray.find((t) => t.id === String(toothId));
+    if (!tooth) return undefined;
+    const count = teethArray.length;
+    const idx = teethArray.findIndex((t) => t.id === String(toothId));
+    if (idx < 0) return undefined;
+    const cx = 320, cy = 195, rx = 260, ry = 120;
+    const t = (idx / (count - 1)) * Math.PI;
+    const x = cx + rx * Math.cos(Math.PI + t) * (tooth.arch === 'upper' ? 1 : 0.98);
+    const y = cy + ry * Math.sin(Math.PI + t) * (tooth.arch === 'upper' ? -1 : 0.85);
+    return {
+      x: Number((x / 640 * 100).toFixed(2)),
+      y: Number((y / 400 * 100).toFixed(2)),
+    };
+  }
+
+  function renderToothFindingPanelGeneric(teethArray, prefix, container, toothId, current, onSave, onClear) {
+    const currentValues = (current?.values) || (current?.value ? [current.value] : []);
+    const tooth = teethArray.find((t) => t.id === String(toothId)) || { id: toothId, name: 'Tooth' };
+    const arch = tooth.arch === 'upper' ? 'Upper' : 'Lower';
+    const side = tooth.side === 'right' ? 'Right' : 'Left';
+    container.innerHTML = `
+      <div class="specialist-finding-panel" data-tooth-panel="${toothId}">
+        <h4>${prefix} Tooth ${tooth.id} — ${arch} ${side} ${escapeHtmlAttr(tooth.name)}</h4>
+        <div class="finding-picker multi-finding">
+          ${FINDING_OPTIONS.map((f) => `<button type="button" class="finding-pill ${currentValues.includes(f.value) ? 'active' : ''}" data-find-value="${f.value}" style="${currentValues.includes(f.value) ? `--pill-bg:${f.color}` : ''}"><i style="background:${f.color}"></i>${f.label}</button>`).join('')}
+        </div>
+        <input class="finding-note" placeholder="Auto-populated from selections, or type custom notes" value="${escapeHtmlAttr(current?.note || getAutoNote(currentValues))}" />
+        <div class="finding-actions">
+          <button type="button" class="save-btn finding-save">${selectedTeeth.size > 1 ? `Apply to ${selectedTeeth.size} teeth` : 'Save finding'}</button>
+          ${currentValues.length > 0 || selectedTeeth.size > 1 ? '<button type="button" class="delete-btn finding-clear">Clear selected</button>' : ''}
+        </div>
+      </div>`;
+    container.querySelector('.finding-picker').addEventListener('click', (e) => {
+      const btn = e.target.closest('.finding-pill');
+      if (!btn) return;
+      btn.classList.toggle('active');
+      if (btn.classList.contains('active')) {
+        const f = FINDING_BY_VALUE[btn.dataset.findValue];
+        if (f) btn.style.setProperty('--pill-bg', f.color);
+      } else {
+        btn.style.removeProperty('--pill-bg');
+      }
+      // Auto-populate notes with selected finding labels
+      const activeLabels = container.querySelectorAll('.finding-pill.active');
+      const noteInput = container.querySelector('.finding-note');
+      if (noteInput) {
+        const labels = Array.from(activeLabels).map(b => {
+          const fv = b.dataset.findValue;
+          const opt = FINDING_BY_VALUE[fv];
+          return opt ? opt.label : fv;
+        });
+        noteInput.value = labels.join(', ');
+      }
+    });
+    container.querySelector('.finding-save').addEventListener('click', () => {
+      const activePills = container.querySelectorAll('.finding-pill.active');
+      if (activePills.length === 0) return;
+      const vals = Array.from(activePills).map(b => b.dataset.findValue);
+      const note = container.querySelector('.finding-note').value.trim() || undefined;
+      // Apply to all selected teeth
+      const targets = selectedTeeth.size > 0 ? Array.from(selectedTeeth) : [toothId];
+      const allTeeth = teethArray;
+      targets.forEach(tid => {
+        const t = allTeeth.find(tt => tt.id === tid) || { name: 'Tooth' };
+        onSave({
+          values: vals,
+          value: vals[0],
+          toothName: t.name,
+          numberingSystem: prefix.toLowerCase() === 'fdi' ? 'fdi' : 'universal',
+          note: note,
+          toothId: tid,
+        });
+      });
+      // Clear selection after save
+      if (selectedTeeth.size > 0) clearSelection();
+    });
+    const clearBtn = container.querySelector('.finding-clear');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+      const targets = selectedTeeth.size > 0 ? Array.from(selectedTeeth) : [toothId];
+      targets.forEach(tid => onClear(tid));
+      if (selectedTeeth.size > 0) clearSelection();
+    });
+  }
+
+  function getAutoNote(values) {
+    if (!values || values.length === 0) return '';
+    return values.map(v => {
+      const opt = FINDING_BY_VALUE[v];
+      return opt ? opt.label : v;
+    }).join(', ');
+  }
+
   const modules = {
     dental: {
       name: 'Dental / Oral',
@@ -411,6 +718,30 @@
       empty: () => ({ type: 'dental', numberingSystem: 'universal', findings: {} }),
       describeTarget: describeDentalTarget,
       coordinatesFor: dentalCoordinates,
+    },
+    'dental-fdi': {
+      name: 'Dental (Adult) — FDI / ISO 3950',
+      chartType: 'Dental_Adult_FDI',
+      specialty: 'dentistry',
+      standard: 'FDI (ISO 3950) World Dental Federation',
+      numberingSystem: 'fdi_permanent',
+      render: (container, findings, onSelect) => renderFdiToothChartSvg(FDI_PERMANENT_TEETH, 'Dental Chart — FDI (ISO 3950) Adult Permanent', container, findings, onSelect),
+      renderFinding: (container, id, current, onSave, onClear) => renderToothFindingPanelGeneric(FDI_PERMANENT_TEETH, 'FDI', container, id, current, onSave, onClear),
+      empty: () => ({ type: 'dental', numberingSystem: 'fdi_permanent', findings: {} }),
+      describeTarget: (id) => describeFdiTarget(FDI_PERMANENT_TEETH, id),
+      coordinatesFor: (id) => fdiCoordinates(FDI_PERMANENT_TEETH, id),
+    },
+    'dental-pediatric': {
+      name: 'Dental (Kids) — FDI / ISO 3950 Pediatric',
+      chartType: 'Dental_Pediatric_FDI',
+      specialty: 'dentistry',
+      standard: 'FDI (ISO 3950) Pediatric / Primary',
+      numberingSystem: 'fdi_pediatric',
+      render: (container, findings, onSelect) => renderFdiToothChartSvg(FDI_PEDIATRIC_TEETH, 'Dental Chart — FDI (ISO 3950) Pediatric / Primary', container, findings, onSelect),
+      renderFinding: (container, id, current, onSave, onClear) => renderToothFindingPanelGeneric(FDI_PEDIATRIC_TEETH, 'FDI', container, id, current, onSave, onClear),
+      empty: () => ({ type: 'dental', numberingSystem: 'fdi_pediatric', findings: {} }),
+      describeTarget: (id) => describeFdiTarget(FDI_PEDIATRIC_TEETH, id),
+      coordinatesFor: (id) => fdiCoordinates(FDI_PEDIATRIC_TEETH, id),
     },
     dermatology: {
       name: 'Dermatology — Body Surface Map',
@@ -442,7 +773,7 @@
         return s ? { x: s.x, y: s.y } : undefined;
       },
     },
-    // Future templates: dental FDI, dermatome ASIA, skeletal maps, abdomen 9-region.
+    // Future templates: dermatome ASIA, skeletal maps, abdomen 9-region.
   };
 
   function getModule(type) {

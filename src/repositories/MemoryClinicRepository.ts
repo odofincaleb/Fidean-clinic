@@ -26,6 +26,7 @@ import type {
   SyncOperationRecord,
   Tenant,
   TenantSnapshot,
+  WalletTransaction,
 } from '../domain/types.js';
 import { applyInvoicePayment, assertScheduleWindow, finalizeInvoiceFields, toPublicPatientAccount } from '../domain/clinical.js';
 import { assertAppointmentFits } from '../domain/appointmentGuard.js';
@@ -103,6 +104,7 @@ export class MemoryClinicRepository implements ClinicRepository {
   private inventoryBatches = new Map<string, InventoryBatch>();
   private inventoryMovements = new Map<string, InventoryMovement>();
   private suppliers = new Map<string, Supplier>();
+  private walletTransactions = new Map<string, WalletTransaction>();
 
   async listTenants(): Promise<Tenant[]> {
     return [...this.tenants.values()];
@@ -208,6 +210,7 @@ export class MemoryClinicRepository implements ClinicRepository {
     const patient: Patient = {
       id: nanoid(),
       tenantId: input.tenantId,
+      branchId: input.branchId,
       patientCode: patientCode(),
       clinicPatientId: input.clinicPatientId,
       firstName: input.firstName,
@@ -910,6 +913,22 @@ export class MemoryClinicRepository implements ClinicRepository {
       brandPrimaryColor: data.brandPrimaryColor ?? existing?.brandPrimaryColor ?? '#66f2ea',
       brandAccentColor: data.brandAccentColor ?? existing?.brandAccentColor ?? '#3b82f6',
       notificationTemplates: data.notificationTemplates ?? existing?.notificationTemplates ?? {},
+      paystackPublicKey: data.paystackPublicKey ?? existing?.paystackPublicKey ?? '',
+      paystackSecretKey: data.paystackSecretKey ?? existing?.paystackSecretKey ?? '',
+      bankName: data.bankName ?? existing?.bankName ?? '',
+      bankAccountName: data.bankAccountName ?? existing?.bankAccountName ?? '',
+      bankAccountNumber: data.bankAccountNumber ?? existing?.bankAccountNumber ?? '',
+      bankTransferEnabled: data.bankTransferEnabled ?? existing?.bankTransferEnabled ?? true,
+      smtpHost: data.smtpHost ?? existing?.smtpHost ?? '',
+      smtpPort: data.smtpPort ?? existing?.smtpPort ?? 587,
+      smtpUser: data.smtpUser ?? existing?.smtpUser ?? '',
+      smtpPass: data.smtpPass ?? existing?.smtpPass ?? '',
+      smtpFromEmail: data.smtpFromEmail ?? existing?.smtpFromEmail ?? '',
+      smtpFromName: data.smtpFromName ?? existing?.smtpFromName ?? '',
+      walletBalance: data.walletBalance ?? existing?.walletBalance ?? 0,
+      messagingEnabled: data.messagingEnabled ?? existing?.messagingEnabled ?? false,
+      whatsappCostPerMsg: data.whatsappCostPerMsg ?? existing?.whatsappCostPerMsg ?? 80,
+      smsCostPerMsg: data.smsCostPerMsg ?? existing?.smsCostPerMsg ?? 6,
       createdAt: existing?.createdAt ?? now(),
       updatedAt: now(),
     };
@@ -940,7 +959,7 @@ export class MemoryClinicRepository implements ClinicRepository {
   }
 
   // Paystack
-  async createPaystackTransaction(tenantId: string, invoiceId: string, reference: string, amountKobo: number): Promise<PaystackTransaction> {
+  async createPaystackTransaction(tenantId: string, invoiceId: string | undefined, reference: string, amountKobo: number): Promise<PaystackTransaction> {
     const tx: PaystackTransaction = {
       id: nanoid(),
       tenantId,
@@ -961,6 +980,40 @@ export class MemoryClinicRepository implements ClinicRepository {
     const next = { ...existing, ...data };
     this.paystackTxs.set(existing.id, next);
     return next;
+  }
+
+  // Wallet
+  async getWalletTransactions(tenantId: string, limit = 50): Promise<WalletTransaction[]> {
+    return [...this.walletTransactions.values()]
+      .filter((tx) => tx.tenantId === tenantId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
+  }
+
+  async recordWalletTransaction(
+    tenantId: string,
+    data: {
+      amount: number;
+      type: WalletTransaction['type'];
+      reason: WalletTransaction['reason'];
+      messageLogId?: string;
+      paystackReference?: string;
+      description?: string;
+    },
+  ): Promise<WalletTransaction> {
+    const tx: WalletTransaction = {
+      id: nanoid(),
+      tenantId,
+      amount: data.amount,
+      type: data.type,
+      reason: data.reason,
+      messageLogId: data.messageLogId,
+      paystackReference: data.paystackReference,
+      description: data.description,
+      createdAt: now(),
+    };
+    this.walletTransactions.set(tx.id, tx);
+    return tx;
   }
 
   // Messages

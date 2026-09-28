@@ -10,6 +10,16 @@
 </head>
 <body>
   <main class="shell">
+    <!-- Loading screen — hidden by handleRoute() on first run -->
+    <div id="app-loading" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;z-index:999999">
+      <div style="text-align:center">
+        <div class="brand-mark" style="width:48px;height:48px;margin:0 auto 16px"></div>
+        <div style="width:200px;height:4px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin:0 auto">
+          <div style="width:30%;height:100%;background:#6C5CE7;border-radius:4px;animation:loadPulse 1.2s ease-in-out infinite"></div>
+        </div>
+      </div>
+    </div>
+    <style>@keyframes loadPulse{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}</style>
     <!-- Super Admin Login — / -->
     <section class="auth-page" id="super-admin-view">
       <div class="auth-card-centered">

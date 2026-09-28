@@ -947,6 +947,7 @@ function navigateTo(path) {
 }
 
 function handleRoute() {
+  document.querySelector('#app-loading')?.remove();
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
   const params = new URLSearchParams(window.location.search);
   if (path === '/payment-callback') {

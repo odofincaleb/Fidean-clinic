@@ -974,8 +974,8 @@ function handleRoute() {
   }
   if (path === '/') {
     // If already logged in as super admin, skip login form
-    const savedToken = localStorage.getItem('clinic_jwt') || localStorage.getItem('fidean_token');
-    const savedTenant = localStorage.getItem('fidean_tenant_id');
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    const savedTenant = localStorage.getItem(TENANT_KEY);
     if (savedToken && savedTenant) {
       showView('dashboard');
       setSession(savedToken, savedTenant, 'staff');
@@ -994,8 +994,8 @@ function handleRoute() {
   currentTenantSlug = slug;
   localStorage.setItem('lastTenantSlug', slug);
   // If already logged in with a token for this tenant, go straight to dashboard
-  const savedToken = localStorage.getItem('clinic_jwt') || localStorage.getItem('fidean_token');
-  const savedTenant = localStorage.getItem('fidean_tenant_id');
+  const savedToken = localStorage.getItem(TOKEN_KEY);
+  const savedTenant = localStorage.getItem(TENANT_KEY);
   if (savedToken && savedTenant) {
     showView('dashboard');
     setSession(savedToken, savedTenant, 'staff');

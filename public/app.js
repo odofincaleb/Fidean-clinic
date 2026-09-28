@@ -929,6 +929,7 @@ function showView(view) {
     const el = document.querySelector(`#${id}`);
     if (el) el.hidden = id !== view;
   });
+  document.querySelector('#app-loading')?.remove();
   // Hide sidebar on auth pages, show on dashboard
   const isAuth = view !== 'dashboard' && view !== 'patient-dashboard';
   document.querySelector('.sidebar')?.classList.toggle('hidden', isAuth);
@@ -947,7 +948,6 @@ function navigateTo(path) {
 }
 
 function handleRoute() {
-  document.querySelector('#app-loading')?.remove();
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
   const params = new URLSearchParams(window.location.search);
   if (path === '/payment-callback') {

@@ -878,9 +878,9 @@
           <span style="color:var(--text-tertiary);font-size:.82rem">wallet balance</span>
           <button type="button" id="wallet-topup-btn" class="tab" style="background:var(--purple);color:#fff;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:700;margin-left:auto">Top Up</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-          <label>WhatsApp cost/msg (₦) <input type="number" name="whatsappCostPerMsg" id="whatsapp-cost" value="80" min="1" style="width:100%" /></label>
-          <label>SMS cost/msg (₦) <input type="number" name="smsCostPerMsg" id="sms-cost" value="6" min="1" style="width:100%" /></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;font-size:.85rem;color:var(--text-tertiary)">
+          <span>WhatsApp cost/msg: <strong>₦<span id="whatsapp-cost-display">80</span></strong></span>
+          <span>SMS cost/msg: <strong>₦<span id="sms-cost-display">6</span></strong></span>
         </div>
         <div style="margin-top:6px">
           <a href="/wallet" style="font-size:.82rem;color:var(--purple)">View wallet transactions →</a>
@@ -968,12 +968,25 @@
 <div id="pay-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Record Payment</h3>
-    <p id="pay-modal-invoice" class="hint"></p>
-    <label>Amount (₦) <input id="pay-modal-amount" type="number" min="0" value="0" /></label>
-    <div class="card-actions">
+    <label>Amount (₦) <input type="number" id="pay-modal-amount" min="1" value="0" /></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button id="pay-modal-cancel" style="background:transparent;color:var(--primary)" onclick="this.closest('.modal-overlay').style.cssText='display:none!important'">Cancel</button>
-      <button id="pay-modal-confirm" class="paystack-btn" onclick="(async function(){const m=document.querySelector('#pay-modal');const i=m.dataset.invoiceId;const a=Number(document.querySelector('#pay-modal-amount').value);if(!a||a<=0){alert('Enter amount');return}await fetch('/api/invoices/'+i+'/payment',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('clinic_jwt')},body:JSON.stringify({amountKobo:a})});m.style.cssText="display:none!important";location.reload()})()">Record Payment</button>
+      <button id="pay-modal-confirm" class="paystack-btn" onclick="(async function(){const m=document.querySelector('#pay-modal');const i=m.dataset.invoiceId;const a=Number(document.querySelector('#pay-modal-amount').value);if(!a||a<=0){alert('Enter amount');return}await fetch('/api/invoices/'+i+'/payment',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('clinic_jwt')},body:JSON.stringify({amountKobo:a})});m.style.cssText='display:none!important';location.reload()})()">Record Payment</button>
     </div>
   </div>
+</div>
+
+<!-- Wallet Top-Up Modal -->
+<div id="wallet-topup-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <h3>💰 Top Up Wallet</h3>
+    <p style="color:var(--text-tertiary);font-size:.85rem;margin:4px 0 12px">Enter the amount you want to fund your wallet. You'll be redirected to Paystack to complete payment.</p>
+    <label>Amount (₦) <input type="number" id="wallet-topup-amount" min="100" value="5000" step="100" /></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button style="background:transparent;color:var(--primary)" onclick="this.closest('.modal-overlay').style.cssText='display:none!important'">Cancel</button>
+      <button id="wallet-topup-confirm" class="paystack-btn" onclick="(async function(){const m=document.querySelector('#wallet-topup-modal');const a=Number(document.querySelector('#wallet-topup-amount').value);if(!a||a<100){alert('Minimum top-up is ₦100');return}try{const r=await fetch('/api/wallet/topup',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('clinic_jwt')},body:JSON.stringify({amount:a})});const d=await r.json();if(d.authorizationUrl){window.location.href=d.authorizationUrl}else{alert(d.error||'Top-up failed')}}catch(e){alert('Top-up failed: '+e.message)}m.style.cssText='display:none!important'})()">Proceed to Paystack</button>
+    </div>
+  </div>
+</div>
 </div>
 </main></body></html>

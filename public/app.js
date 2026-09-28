@@ -3135,10 +3135,10 @@ async function loadSettings() {
       // Messaging & Wallet
       const msgEnabled = document.querySelector('#messaging-enabled');
       if (msgEnabled) msgEnabled.checked = !!data.messagingEnabled;
-      const waCost = document.querySelector('#whatsapp-cost');
-      if (waCost) waCost.value = data.whatsappCostPerMsg ?? 80;
-      const smsCost = document.querySelector('#sms-cost');
-      if (smsCost) smsCost.value = data.smsCostPerMsg ?? 6;
+      const waDisp = document.querySelector('#whatsapp-cost-display');
+      if (waDisp) waDisp.textContent = data.whatsappCostPerMsg ?? 80;
+      const smsDisp = document.querySelector('#sms-cost-display');
+      if (smsDisp) smsDisp.textContent = data.smsCostPerMsg ?? 6;
       const balDisp = document.querySelector('#wallet-balance-display');
       if (balDisp) balDisp.textContent = (data.walletBalance ?? 0).toLocaleString();
       currentSettings = data;
@@ -3153,30 +3153,13 @@ document.querySelector('#messaging-enabled')?.addEventListener('change', async (
   }).then(r => r.json()).then(d => { if (d && d.tenantId) showSuccessToast('Messaging ' + (e.target.checked ? 'enabled' : 'disabled')); }).catch(() => {});
 });
 
-document.querySelector('#whatsapp-cost')?.addEventListener('change', async (e) => {
-  const v = Math.max(1, Math.round(Number(e.target.value) || 1));
-  await fetch('/api/settings', { method: 'PUT', headers: headers(), body: JSON.stringify({ whatsappCostPerMsg: v }) }).catch(() => {});
-});
-document.querySelector('#sms-cost')?.addEventListener('change', async (e) => {
-  const v = Math.max(1, Math.round(Number(e.target.value) || 1));
-  await fetch('/api/settings', { method: 'PUT', headers: headers(), body: JSON.stringify({ smsCostPerMsg: v }) }).catch(() => {});
-});
-
 /* ── Wallet top-up ── */
-document.querySelector('#wallet-topup-btn')?.addEventListener('click', async () => {
-  const amt = prompt('Enter top-up amount in Naira (₦):', '5000');
-  if (!amt || isNaN(Number(amt)) || Number(amt) <= 0) return;
-  try {
-    const resp = await fetch('/api/wallet/topup', {
-      method: 'POST', headers: headers(), body: JSON.stringify({ amount: Number(amt) })
-    });
-    const data = await resp.json();
-    if (data.authorizationUrl) {
-      window.location.href = data.authorizationUrl;
-    } else {
-      alert('❌ ' + (data.error || 'Top-up failed'));
-    }
-  } catch (err) { alert('❌ Top-up failed: ' + err.message); }
+document.querySelector('#wallet-topup-btn')?.addEventListener('click', () => {
+  const modal = document.querySelector('#wallet-topup-modal');
+  if (!modal) return;
+  modal.style.cssText = 'position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;background:rgba(0,0,0,0.7)!important;z-index:99999!important;display:flex!important;align-items:center!important;justify-content:center!important';
+  modal.querySelector('.modal-card').style.cssText = 'background:#fff!important;border-radius:12px;padding:24px;min-width:340px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,0.2);position:relative;z-index:100000';
+  document.querySelector('#wallet-topup-amount').value = 5000;
 });
 
 /* ── Notification Templates ── */

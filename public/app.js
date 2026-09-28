@@ -688,6 +688,37 @@ function render() {
     document.querySelector('#invoice-form [name="quantity"]').addEventListener('input', () => {
       document.querySelector('#invoice-hmo-select').dispatchEvent(new Event('change'));
     });
+
+    /* Live invoice totals (discount + HMO preview) */
+    function updateInvoiceTotals() {
+      const price = Number(document.querySelector('#invoice-form [name="unitPrice"]')?.value || 0);
+      const qty = Number(document.querySelector('#invoice-form [name="quantity"]')?.value || 1);
+      const subtotal = price * qty;
+      const discType = document.querySelector('#discount-type')?.value || 'fixed';
+      const discVal = Number(document.querySelector('#discount-value')?.value || 0);
+      let discountKobo = discType === 'percentage' ? Math.round(subtotal * discVal / 100) : discVal;
+      if (discountKobo > subtotal) discountKobo = subtotal;
+      const hmoSel = document.querySelector('#invoice-hmo-select');
+      const hmoOpt = hmoSel?.options[hmoSel.selectedIndex];
+      let hmoCover = 0;
+      if (hmoOpt && hmoOpt.value) {
+        hmoCover = hmoOpt.dataset.type === 'percentage'
+          ? Math.round(subtotal * Number(hmoOpt.dataset.value) / 100)
+          : Number(hmoOpt.dataset.value);
+      }
+      const afterDiscount = subtotal - discountKobo;
+      const finalTotal = Math.max(afterDiscount - hmoCover, 0);
+      document.querySelector('#inv-subtotal').textContent = '\u20A6' + subtotal.toLocaleString();
+      document.querySelector('#inv-discount-display').textContent = '-\u20A6' + discountKobo.toLocaleString();
+      document.querySelector('#inv-hmo-total').textContent = '\u20A6' + hmoCover.toLocaleString();
+      document.querySelector('#inv-total').textContent = '\u20A6' + finalTotal.toLocaleString();
+    }
+    document.querySelector('#discount-type')?.addEventListener('change', updateInvoiceTotals);
+    document.querySelector('#discount-value')?.addEventListener('input', updateInvoiceTotals);
+    document.querySelector('#invoice-form [name="unitPrice"]').addEventListener('input', updateInvoiceTotals);
+    document.querySelector('#invoice-form [name="quantity"]').addEventListener('input', updateInvoiceTotals);
+    document.querySelector('#invoice-hmo-select')?.addEventListener('change', updateInvoiceTotals);
+    updateInvoiceTotals();
     document.querySelector('#document-form [name=encounterId]').innerHTML = `<option value="">No encounter</option>${encounterOptions}`;
     renderPatientAutocomplete('appointment-patient-ac', 'patientId', '');
     renderPatientAutocomplete('invoice-patient-ac', 'patientId', '');
@@ -1594,6 +1625,12 @@ document.querySelector('#invoice-form').addEventListener('submit', async (event)
       ? Math.round(total * Number(hmoOpt.dataset.value) / 100)
       : Number(hmoOpt.dataset.value);
   }
+  // Calculate discount
+  const discType = document.querySelector('#discount-type')?.value || 'fixed';
+  const discVal = Number(document.querySelector('#discount-value')?.value || 0);
+  const subtotal = Number(data.unitPrice) * Number(data.quantity);
+  let discountKobo = discType === 'percentage' ? Math.round(subtotal * discVal / 100) : discVal;
+  if (discountKobo > subtotal) discountKobo = subtotal;
   await submitOrQueue(event.target, {
     entityType: 'invoice',
     endpoint: '/api/invoices',
@@ -1603,6 +1640,7 @@ document.querySelector('#invoice-form').addEventListener('submit', async (event)
       patientId: data.patientId,
       appointmentId: data.appointmentId || undefined,
       encounterId: data.encounterId || undefined,
+      discountKobo,
       hmoInsuranceId: hmoOpt?.value || undefined,
       hmoCoverageKobo,
       lines: [{ description: data.description, quantity: Number(data.quantity), unitPriceKobo: Number(data.unitPrice), inventoryItemId: document.querySelector('#inv-desc')?.dataset?.inventoryItemId || undefined }],

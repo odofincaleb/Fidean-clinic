@@ -518,6 +518,21 @@
           <label>Item / service <input name="description" placeholder="e.g. Consultation" required id="inv-desc" /></label>
           <label>Qty <input name="quantity" type="number" value="1" min="1" /></label>
           <label>Unit price (₦) <input name="unitPrice" type="number" value="0" min="0" placeholder="e.g. 5000" /></label>
+          <label>Discount
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="discount-type" style="flex:0 0 110px;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;font-size:.85rem">
+                <option value="fixed">₦ Fixed</option>
+                <option value="percentage">% Percentage</option>
+              </select>
+              <input name="discountValue" id="discount-value" type="number" value="0" min="0" placeholder="0" style="flex:1" />
+            </div>
+          </label>
+          <div id="invoice-totals" style="background:#f8f5ff;border-radius:12px;padding:12px 14px;font-size:.9rem;line-height:1.8">
+            <div>Subtotal: <strong id="inv-subtotal">₦0</strong></div>
+            <div>Discount: <strong id="inv-discount-display" style="color:#b91c1c">-₦0</strong></div>
+            <div>HMO covers: <strong id="inv-hmo-total" style="color:#16a34a">₦0</strong></div>
+            <div style="border-top:1px solid #e2e8f0;padding-top:4px;margin-top:4px">Total: <strong id="inv-total" style="font-size:1.1rem">₦0</strong></div>
+          </div>
           <div style="position:relative;margin-top:-4px">
             <small style="color:var(--text-tertiary)">Or select from inventory:</small>
             <input type="text" id="inv-inv-search" placeholder="Search drug / device..." style="font-size:13px;width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:8px" />

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
@@ -36,8 +37,18 @@ export function registerWalletRoutes(app: FastifyInstance, repo: ClinicRepositor
     const body = z.object({ amount: z.number().int().positive() }).parse(request.body);
 
     // Wallet top-ups use Fidean's company Paystack account, not the clinic's own keys.
-    const secretKey = process.env.FIDEAN_PAYSTACK_SK;
-    const publicKey = process.env.FIDEAN_PAYSTACK_PK;
+    let secretKey = process.env.FIDEAN_PAYSTACK_SK;
+    let publicKey = process.env.FIDEAN_PAYSTACK_PK;
+    if (!secretKey || !publicKey) {
+      try {
+        const envContent = fs.readFileSync(new URL('../../.env.fidean', import.meta.url), 'utf-8');
+        for (const line of envContent.split('\n')) {
+          const [k, ...v] = line.split('=');
+          if (k === 'FIDEAN_PAYSTACK_SK') secretKey = v.join('=').trim();
+          if (k === 'FIDEAN_PAYSTACK_PK') publicKey = v.join('=').trim();
+        }
+      } catch {}
+    }
     if (!secretKey || !publicKey) throw httpError('PAYSTACK_NOT_CONFIGURED', 400);
 
     const reference = `topup_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`;

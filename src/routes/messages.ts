@@ -54,11 +54,14 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
         throw httpError('MESSAGE_SEND_FAILED', 502);
       }
 
-      // Deduct from wallet and record the debit.
-      const newBalance = balance - cost;
+      // Deduct from wallet using actual units charged by provider, not flat cost.
+      const actualUnits = body.channel === 'sms' ? (sendResult.chargedUnits ?? 1) : 1;
+      const actualCost = Math.ceil(actualUnits * cost);
+      console.log('[SMS COST] units='+actualUnits+' cost='+actualCost+' balance='+balance);
+      const newBalance = balance - actualCost;
       await repo.upsertSettings(auth.tenantId, { walletBalance: newBalance });
       await repo.recordWalletTransaction(auth.tenantId, {
-        amount: cost,
+        amount: actualCost,
         type: 'debit',
         reason: body.channel === 'whatsapp' ? 'whatsapp_msg' : 'sms_msg',
         messageLogId: log.id,
@@ -71,7 +74,7 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
         sentAt: new Date().toISOString(),
       });
 
-      return reply.code(201).send({ ok: true, message: sent, cost, balance: newBalance });
+      return reply.code(201).send({ ok: true, message: sent, cost: actualCost, chargedUnits: actualUnits, balance: newBalance });
     }
 
     // Email: attempt real send via tenant SMTP; keep the log queued if SMTP isn't configured.

@@ -488,6 +488,7 @@ function renderDashboard() {
 
 function render() {
   if (!snapshot) return;
+  document.querySelector('#app-loading')?.remove();
   dashboard.hidden = false;
   document.querySelector('.workspace-grid')?.classList.remove('auth-mode');
   document.querySelector('.sidebar')?.classList.remove('hidden');
@@ -931,7 +932,9 @@ function showView(view) {
     const el = document.querySelector(`#${id}`);
     if (el) el.hidden = id !== view;
   });
-  document.querySelector('#app-loading')?.remove();
+  if (view !== 'dashboard' && view !== 'patient-dashboard') {
+    document.querySelector('#app-loading')?.remove();
+  }
   // Hide sidebar on auth pages, show on dashboard
   const isAuth = view !== 'dashboard' && view !== 'patient-dashboard';
   document.querySelector('.sidebar')?.classList.toggle('hidden', isAuth);

@@ -229,6 +229,7 @@ export interface AuthUser {
   email: string;
   passwordHash: string;
   displayName?: string;
+  isSuperAdmin?: boolean;
 }
 
 export interface ClinicRepository {

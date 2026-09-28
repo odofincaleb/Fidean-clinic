@@ -1101,6 +1101,12 @@ loginForm.addEventListener('submit', async (event) => {
     if (el) { el.textContent = body.error || 'Login failed'; el.hidden = false; }
     return;
   }
+  // Super admin login — no clinic/tenant
+  if (body.isSuperAdmin) {
+    setSession(body.token, '', 'staff');
+    showSuperAdmin();
+    return;
+  }
   currentRole = body.member?.role || 'viewer';
   currentMemberId = body.member?.id || '';
   setSession(body.token, body.tenant.id, 'staff');

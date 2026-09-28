@@ -183,7 +183,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
   // Super Admin: list all tenants
   app.get('/api/super-admin/tenants', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (auth.member.role !== 'owner' && auth.member.role !== 'admin') throw httpError('FORBIDDEN', 403);
+    if (auth.member.role !== 'owner' && auth.member.role !== 'admin' && auth.member.role !== 'super_admin') throw httpError('FORBIDDEN', 403);
     const tenants = await repo.listTenants();
     const result = [];
     for (const tenant of tenants) {

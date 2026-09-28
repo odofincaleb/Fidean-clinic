@@ -89,6 +89,12 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
     if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
       throw httpError('INVALID_CREDENTIALS', 401);
     }
+    // Super admin bypass membership check
+    const isSuperAdmin = (user as any).isSuperAdmin === true;
+    if (isSuperAdmin) {
+      const token = signToken({ memberId: '', tenantId: '', role: 'super_admin', email: user.email });
+      return { ok: true, token, tenant: null, member: null, user: publicUser(user), isSuperAdmin: true };
+    }
     const member = await repo.findActiveMembershipByUserId(user.id);
     if (!member) {
       throw httpError('NO_ACTIVE_MEMBERSHIP', 403);

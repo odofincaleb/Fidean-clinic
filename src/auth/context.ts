@@ -59,6 +59,10 @@ export async function requireAuth(request: FastifyRequest, repo: ClinicRepositor
       throw httpError('INVALID_TOKEN', 401);
     }
     if (payload.typ === 'patient') throw httpError('STAFF_AUTH_REQUIRED', 403);
+    // Super admin: no membership lookup needed
+    if (payload.role === 'super_admin' && payload.tenantId === '') {
+      return { tenantId: '', member: { id: '', email: payload.email, role: 'super_admin' as any, tenantId: '', status: 'active' as const, displayName: 'Super Admin', branchIds: [], phone: '', specialization: '', qualifications: '', licenseNumber: '', userId: '' } };
+    }
     const member = await repo.getMember(payload.sub);
     if (!member || member.tenantId !== payload.tenantId || member.status !== 'active') {
       throw httpError('FORBIDDEN', 403);

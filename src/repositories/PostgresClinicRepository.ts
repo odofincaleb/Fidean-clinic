@@ -841,7 +841,7 @@ export class PostgresClinicRepository implements ClinicRepository {
   }
 
   async findUserByEmail(email: string): Promise<AuthUser | undefined> {
-    const result = await this.pool.query('SELECT id, email, password_hash, display_name FROM users WHERE email = $1', [email.toLowerCase()]);
+    const result = await this.pool.query('SELECT id, email, password_hash, display_name, is_super_admin FROM users WHERE email = $1', [email.toLowerCase()]);
     const row = result.rows[0];
     if (!row) return undefined;
     return {
@@ -849,6 +849,7 @@ export class PostgresClinicRepository implements ClinicRepository {
       email: String(row.email).toLowerCase(),
       passwordHash: row.password_hash,
       displayName: row.display_name ?? undefined,
+      isSuperAdmin: row.is_super_admin ?? false,
     };
   }
 

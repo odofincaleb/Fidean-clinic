@@ -2145,12 +2145,15 @@ document.addEventListener('click', async (e) => {
       result.textContent = 'Map First Name and Phone before importing.';
       return;
     }
+    const branchId = document.querySelector('#patient-import-branch')?.value;
+    if (!branchId) {
+      result.textContent = 'Select a Target branch before importing.';
+      return;
+    }
     runImport.disabled = true;
     result.textContent = 'Importing patients...';
     try {
-      const branchId = document.querySelector('#patient-import-branch')?.value || undefined;
-      const payload = { tenantId, format: 'excel', rows: patientImportRows, mapping };
-      if (branchId) payload.branchId = branchId;
+      const payload = { tenantId, format: 'excel', rows: patientImportRows, mapping, branchId };
       const response = await fetch('/api/patients/bulk-import', {
         method: 'POST',
         headers: headers(),

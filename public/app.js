@@ -1948,12 +1948,22 @@ document.querySelector('#patient-search-input')?.addEventListener('input', () =>
     render();
     return;
   }
-
-document.querySelector('#patient-branch-filter')?.addEventListener('change', () => { render(); });
   list.querySelectorAll('article').forEach(a => {
     const text = a.textContent.toLowerCase();
     a.style.display = text.includes(q) ? '' : 'none';
   });
+});
+
+/* ── Patient branch filter (list-only update, no full re-render) ── */
+document.querySelector('#patient-branch-filter')?.addEventListener('change', () => {
+  if (!snapshot || !document.querySelector('#patient-list')) return;
+  const filter = document.querySelector('#patient-branch-filter').value;
+  const filtered = filter ? snapshot.patients.filter((p) => p.branchId === filter) : snapshot.patients;
+  const esc = (s) => { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  document.querySelector('#patient-list').innerHTML = filtered.map((patient) => {
+    const branchName = snapshot.branches.find((b) => b.id === patient.branchId)?.name || '';
+    return `<article class="card-rich card-clickable" data-patient-id="${patient.id}"><h3>${esc(patient.firstName)} ${esc(patient.lastName)}</h3><p class="card-meta">${patient.clinicPatientId ? 'Clinic ID: ' + esc(patient.clinicPatientId) + ' &middot; ' : ''}${patient.patientCode} &middot; ${esc(patient.phone)}${branchName ? ' <span class="badge badge-active">' + esc(branchName) + '</span>' : ''}</p><div class="card-details">${patient.email ? '<span>&#9993; ' + esc(patient.email) + '</span>' : ''}${patient.dob ? '<span>&#128197; DOB: ' + new Date(patient.dob).toLocaleDateString() + '</span>' : ''}${patient.gender ? '<span>&#9906; ' + esc(patient.gender) + '</span>' : ''}${patient.bloodGroup ? '<span>&#129656; ' + esc(patient.bloodGroup) + '</span>' : ''}${patient.address ? '<span>&#128205; ' + esc(patient.address) + (patient.city ? ', ' + esc(patient.city) : '') + (patient.state ? ', ' + esc(patient.state) : '') + '</span>' : ''}${patient.medicalHistory ? '<small class="card-note">&#128203; ' + esc(patient.medicalHistory.substring(0,80)) + '</small>' : ''}</div></article>`;
+  }).join('');
 });
 
 /* ── Patient detail view ── */

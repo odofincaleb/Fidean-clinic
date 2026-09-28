@@ -207,6 +207,26 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     return { ok: true, tenants: result };
   });
 
+  // Super Admin: get tenant access token
+  app.post('/api/super-admin/tenant-access', async (request) => {
+    const auth = await requireAuth(request, repo);
+    if (auth.member.role !== 'super_admin') throw httpError('FORBIDDEN', 403);
+    const body = z.object({ slug: z.string().min(1) }).parse(request.body);
+    const tenants = await repo.listTenants();
+    const tenant = tenants.find(t => t.slug === body.slug);
+    if (!tenant) throw httpError('TENANT_NOT_FOUND', 404);
+    const members = await repo.listMembers(tenant.id);
+    // Find or create an admin membership for the super admin
+    let member = members.find(m => m.email === auth.member.email);
+    if (!member) {
+      member = await repo.addMember({ tenantId: tenant.id, email: auth.member.email, role: 'admin', displayName: 'Super Admin' });
+      const user = await repo.findUserByEmail(auth.member.email);
+      if (user) await repo.linkUserToMembership(member.id, user.id);
+    }
+    const token = signToken({ memberId: member.id, tenantId: tenant.id, role: member.role, email: member.email });
+    return { ok: true, token, tenantId: tenant.id, slug: tenant.slug };
+  });
+
   // Data backup: export all clinic data
   app.get('/api/backup/json', async (request) => {
     const auth = await requireAuth(request, repo);

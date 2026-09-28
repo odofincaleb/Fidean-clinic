@@ -1268,10 +1268,25 @@ async function showSuperAdmin() {
         </div>
       </article>
     `).join('');
-    // Click handler
+    // Click handler — get tenant access token then navigate
     grid.querySelectorAll('[data-sa-tenant]').forEach(el => {
-      el.addEventListener('click', () => {
-        window.location.href = '/' + el.dataset.saTenant;
+      el.addEventListener('click', async () => {
+        const slug = el.dataset.saTenant;
+        try {
+          const resp = await fetch('/api/super-admin/tenant-access', {
+            method: 'POST', headers: headers(), body: JSON.stringify({ slug })
+          });
+          const d = await resp.json();
+          if (d.ok) {
+            localStorage.setItem(TOKEN_KEY, d.token);
+            localStorage.setItem(TENANT_KEY, d.tenantId);
+            window.location.href = '/' + slug;
+          } else {
+            alert(d.error || 'Access denied');
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
       });
     });
   } catch (e) {

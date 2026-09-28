@@ -3175,6 +3175,8 @@ async function loadSettings() {
       if (waDisp) waDisp.textContent = data.whatsappCostPerMsg ?? 80;
       const smsDisp = document.querySelector('#sms-cost-display');
       if (smsDisp) smsDisp.textContent = data.smsCostPerMsg ?? 6;
+      const senderIdInput = document.querySelector('#sms-sender-id');
+      if (senderIdInput) senderIdInput.value = data.smsSenderId || '';
       const balDisp = document.querySelector('#wallet-balance-display');
       if (balDisp) balDisp.textContent = (data.walletBalance ?? 0).toLocaleString();
       currentSettings = data;
@@ -3196,6 +3198,14 @@ document.querySelector('#wallet-topup-btn')?.addEventListener('click', () => {
   modal.style.cssText = 'position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;background:rgba(0,0,0,0.7)!important;z-index:99999!important;display:flex!important;align-items:center!important;justify-content:center!important';
   modal.querySelector('.modal-card').style.cssText = 'background:#fff!important;border-radius:12px;padding:24px;min-width:340px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,0.2);position:relative;z-index:100000';
   document.querySelector('#wallet-topup-amount').value = 5000;
+});
+
+/* ── SMS Sender ID save ── */
+document.querySelector('#sms-sender-id')?.addEventListener('change', async (e) => {
+  const v = e.target.value.trim();
+  await fetch('/api/settings', {
+    method: 'PUT', headers: headers(), body: JSON.stringify({ smsSenderId: v || undefined })
+  }).then(r => r.json()).then(d => { if (d && d.tenantId) showSuccessToast('Sender ID saved'); }).catch(() => {});
 });
 
 /* ── Notification Templates ── */

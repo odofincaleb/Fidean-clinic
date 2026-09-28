@@ -48,7 +48,7 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
             to: body.recipient,
             template: { name: templateName, bodyParams: [body.body] },
           })
-        : await sendSmsMessage({ to: body.recipient, body: body.body });
+        : await sendSmsMessage({ to: body.recipient, body: body.body, senderId: settings?.smsSenderId || undefined });
       if (!sendResult.ok) {
         await repo.updateMessageLog(log.id, { status: 'failed', provider: body.channel, error: sendResult.error });
         throw httpError('MESSAGE_SEND_FAILED', 502);

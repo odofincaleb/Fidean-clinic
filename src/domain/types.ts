@@ -397,6 +397,7 @@ export interface ClinicSettings {
   messagingEnabled: boolean;
   whatsappCostPerMsg: number;
   smsCostPerMsg: number;
+  smsSenderId?: string;
 }
 
 export interface WalletTransaction {

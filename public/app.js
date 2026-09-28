@@ -973,6 +973,15 @@ function handleRoute() {
     return;
   }
   if (path === '/') {
+    // If already logged in as super admin, skip login form
+    const savedToken = localStorage.getItem('clinic_jwt') || localStorage.getItem('fidean_token');
+    const savedTenant = localStorage.getItem('fidean_tenant_id');
+    if (savedToken && savedTenant) {
+      showView('dashboard');
+      setSession(savedToken, savedTenant, 'staff');
+      refresh();
+      return;
+    }
     showView('super-admin-view');
     return;
   }
@@ -984,6 +993,15 @@ function handleRoute() {
   }
   currentTenantSlug = slug;
   localStorage.setItem('lastTenantSlug', slug);
+  // If already logged in with a token for this tenant, go straight to dashboard
+  const savedToken = localStorage.getItem('clinic_jwt') || localStorage.getItem('fidean_token');
+  const savedTenant = localStorage.getItem('fidean_tenant_id');
+  if (savedToken && savedTenant) {
+    showView('dashboard');
+    setSession(savedToken, savedTenant, 'staff');
+    refresh();
+    return;
+  }
   showView('tenant-view');
   document.querySelector('#tenant-name').textContent = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' Portal';
   // Resolve tenant from API

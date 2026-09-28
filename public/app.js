@@ -284,7 +284,9 @@ function initSpecialistCharts() {
   });
 }
 
-// Initialize after DOM ready
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) window.location.reload();
+});
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initSpecialistCharts);
 } else {

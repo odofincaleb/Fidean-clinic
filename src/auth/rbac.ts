@@ -3,7 +3,7 @@ import type { Member, Permission, Role } from '../domain/types.js';
 const matrix: Record<Role, Permission[]> = {
   owner: ['manage_subscription', 'manage_staff', 'manage_branches', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'manage_inventory', 'send_staff_messages', 'manage_referrals'],
   admin: ['manage_staff', 'manage_branches', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'manage_inventory', 'send_staff_messages', 'manage_referrals'],
-  branch_manager: ['manage_staff', 'manage_branches', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'view_reports', 'send_staff_messages', 'manage_referrals'],
+  branch_manager: ['manage_staff', 'manage_branches', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'send_staff_messages', 'manage_referrals'],
   doctor: ['view_patients', 'write_encounter', 'create_appointment', 'view_billing', 'send_staff_messages', 'manage_referrals'],
   receptionist: ['create_appointment', 'view_patients'],
   nurse: ['view_patients', 'write_encounter', 'send_staff_messages'],

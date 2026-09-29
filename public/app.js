@@ -60,7 +60,7 @@ const PATIENT_TEMPLATE_HEADERS = ['Existing Patient ID','First Name','Last Name'
 const ROLE_PERMS = {
   owner:   ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_subscription','manage_inventory','send_staff_messages','manage_referrals'],
   admin:   ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_inventory','send_staff_messages','manage_referrals'],
-  branch_manager: ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','view_billing','view_reports','send_staff_messages','manage_referrals'],
+  branch_manager: ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','view_billing','manage_billing','view_reports','send_staff_messages','manage_referrals'],
   doctor:  ['view_patients','write_encounter','manage_prescriptions','create_appointment','view_billing','send_staff_messages','manage_referrals'],
   receptionist: ['create_appointment','view_patients'],
   nurse:   ['view_patients','write_encounter','send_staff_messages'],

@@ -622,6 +622,12 @@ function render() {
     document.querySelector('#encounter-form [name=branchId]').innerHTML = branchOptions;
     document.querySelector('#encounter-form [name=appointmentId]').innerHTML = apptOptions;
     document.querySelector('#encounter-form [name=doctorMemberId]').innerHTML = `<option value="">Unassigned</option>${doctorOptions}`;
+    const isDoctorRole = currentRole === 'doctor' || currentRole === 'radiologist' || currentRole === 'therapist' || currentRole === 'lab_technician';
+    const doctorSelect = document.querySelector('#encounter-form [name=doctorMemberId]');
+    if (doctorSelect) {
+      doctorSelect.closest('label').hidden = isDoctorRole;
+      if (isDoctorRole) doctorSelect.value = '';
+    }
     document.querySelector('#prescription-form [name=encounterId]').innerHTML = encounterOptions;
     document.querySelector('#invoice-form [name=branchId]').innerHTML = branchOptions;
     document.querySelector('#invoice-form [name=appointmentId]').innerHTML = apptOptions;
@@ -1611,6 +1617,9 @@ document.querySelector('#schedule-form').addEventListener('submit', async (event
 document.querySelector('#encounter-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const data = formDataWithAc(event.target);
+  // Auto-assign doctor: if current user is a doctor/radiologist, use their member ID; otherwise use dropdown selection
+  const isDoctorRole = currentRole === 'doctor' || currentRole === 'radiologist' || currentRole === 'therapist' || currentRole === 'lab_technician';
+  const doctorMemberId = isDoctorRole ? currentMemberId : (data.doctorMemberId || undefined);
   const specialistPayload = buildSpecialistPayload();
   await submitOrQueue(event.target, {
     entityType: 'encounter',
@@ -1620,7 +1629,7 @@ document.querySelector('#encounter-form').addEventListener('submit', async (even
       branchId: data.branchId,
       patientId: data.patientId,
       appointmentId: data.appointmentId || undefined,
-      doctorMemberId: data.doctorMemberId || undefined,
+      doctorMemberId,
       reason: data.reason,
       diagnosis: data.diagnosis,
       clinicalNotes: data.clinicalNotes,

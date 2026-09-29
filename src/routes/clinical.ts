@@ -129,6 +129,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
     return { ok: true, encounter: await repo.updateEncounter(params.encounterId, patch) };
   });
 
+  // Sign encounter (also records the signing doctor)
   app.post('/api/encounters/:encounterId/sign', async (request) => {
     const auth = await requireAuth(request, repo);
     assertCan(auth.member.role, 'write_encounter');
@@ -137,7 +138,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
     if (!encounter) throw httpError('ENCOUNTER_NOT_FOUND', 404);
     if (encounter.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
     assertBranchAccess(auth.member, encounter.branchId);
-    const signed = await repo.signEncounter(params.encounterId);
+    const signed = await repo.signEncounter(params.encounterId, auth.member.id);
     await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'encounter_sign', objectType: 'encounter', objectId: signed.id });
     return { ok: true, encounter: signed };
   });

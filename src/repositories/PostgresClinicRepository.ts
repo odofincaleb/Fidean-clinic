@@ -971,13 +971,13 @@ export class PostgresClinicRepository implements ClinicRepository {
     return mapEncounter(result.rows[0]);
   }
 
-  async signEncounter(encounterId: string): Promise<Encounter> {
+  async signEncounter(encounterId: string, doctorMemberId?: string): Promise<Encounter> {
     const current = await this.getEncounter(encounterId);
     if (!current) throw notFound('ENCOUNTER_NOT_FOUND');
     assertEncounterEditable(current);
     const result = await this.pool.query(
-      `UPDATE encounters SET status='signed', signed_at=now() WHERE id=$1 RETURNING *`,
-      [encounterId],
+      `UPDATE encounters SET status='signed', signed_at=now()${doctorMemberId ? ', doctor_member_id=$2' : ''} WHERE id=$1 RETURNING *`,
+      doctorMemberId ? [encounterId, doctorMemberId] : [encounterId],
     );
     return mapEncounter(result.rows[0]);
   }

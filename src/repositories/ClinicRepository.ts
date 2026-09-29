@@ -296,7 +296,7 @@ export interface ClinicRepository {
   getEncounter(encounterId: string): Promise<Encounter | undefined>;
   createEncounter(input: EncounterInput): Promise<Encounter>;
   updateEncounter(encounterId: string, patch: EncounterPatch): Promise<Encounter>;
-  signEncounter(encounterId: string): Promise<Encounter>;
+  signEncounter(encounterId: string, doctorMemberId?: string): Promise<Encounter>;
   deleteEncounter(encounterId: string): Promise<void>;
 
   listPrescriptions(tenantId: string, filters?: { patientId?: string; encounterId?: string }): Promise<Prescription[]>;

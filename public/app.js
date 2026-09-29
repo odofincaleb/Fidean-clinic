@@ -587,7 +587,9 @@ function render() {
   }).join('');
   document.querySelector('#encounter-list').innerHTML = (snapshot.encounters || []).map((item) => {
     const hasSpecialist = item.specialistData && item.specialistData.type && item.specialistData.findings && Object.keys(item.specialistData.findings).length;
-    return `<article class="card-rich card-clickable" data-encounter-id="${item.id}"><h3>${item.reason || 'Encounter'}</h3><p class="card-meta"><span class="badge badge-${item.status}">${item.status}</span> · ${item.diagnosis || "No diagnosis"}${item.bloodPressure ? ' · BP ' + item.bloodPressure : ''}${item.temperatureC ? ' · ' + item.temperatureC + '°C' : ''}${hasSpecialist ? ' · <span class="specialist-badge">Chart</span>' : ''}${hasSpecialist ? ' <span class="dash-finding-note">' + Object.values(item.specialistData.findings).map(function(f){return f.note||''}).filter(Boolean).join('; ') + '</span>' : ''}</p>${item.status !== 'signed' && canWriteEncounter ? '<button data-sign="' + item.id + '">Sign</button>' : ''}</article>`;
+    const doctor = (snapshot.members || []).find(m => m.id === item.doctorMemberId);
+    const doctorName = doctor ? (doctor.displayName || doctor.email || '') : '';
+    return `<article class="card-rich card-clickable" data-encounter-id="${item.id}"><h3>${item.reason || 'Encounter'}</h3><p class="card-meta"><span class="badge badge-${item.status}">${item.status}</span>${doctorName ? ' · <span class="badge badge-active">' + esc(doctorName) + '</span>' : ''} · ${item.diagnosis || "No diagnosis"}${item.bloodPressure ? ' · BP ' + item.bloodPressure : ''}${item.temperatureC ? ' · ' + item.temperatureC + '°C' : ''}${hasSpecialist ? ' · <span class="specialist-badge">Chart</span>' : ''}${hasSpecialist ? ' <span class="dash-finding-note">' + Object.values(item.specialistData.findings).map(function(f){return f.note||''}).filter(Boolean).join('; ') + '</span>' : ''}</p>${item.status !== 'signed' && canWriteEncounter ? '<button data-sign="' + item.id + '">Sign</button>' : ''}</article>`;
   }).join('');
   document.querySelector('#prescription-list').innerHTML = (snapshot.prescriptions || []).map((item) => {
     const patient = snapshot.patients.find(p => p.id === item.patientId);
@@ -619,6 +621,7 @@ function render() {
     document.querySelector('#schedule-form [name=doctorMemberId]').innerHTML = doctorOptions;
     document.querySelector('#encounter-form [name=branchId]').innerHTML = branchOptions;
     document.querySelector('#encounter-form [name=appointmentId]').innerHTML = apptOptions;
+    document.querySelector('#encounter-form [name=doctorMemberId]').innerHTML = `<option value="">Unassigned</option>${doctorOptions}`;
     document.querySelector('#prescription-form [name=encounterId]').innerHTML = encounterOptions;
     document.querySelector('#invoice-form [name=branchId]').innerHTML = branchOptions;
     document.querySelector('#invoice-form [name=appointmentId]').innerHTML = apptOptions;
@@ -1617,6 +1620,7 @@ document.querySelector('#encounter-form').addEventListener('submit', async (even
       branchId: data.branchId,
       patientId: data.patientId,
       appointmentId: data.appointmentId || undefined,
+      doctorMemberId: data.doctorMemberId || undefined,
       reason: data.reason,
       diagnosis: data.diagnosis,
       clinicalNotes: data.clinicalNotes,

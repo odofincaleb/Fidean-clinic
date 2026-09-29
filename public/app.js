@@ -3171,10 +3171,6 @@ async function loadSettings() {
       // Messaging & Wallet
       const msgEnabled = document.querySelector('#messaging-enabled');
       if (msgEnabled) msgEnabled.checked = !!data.messagingEnabled;
-      const waDisp = document.querySelector('#whatsapp-cost-display');
-      if (waDisp) waDisp.textContent = data.whatsappCostPerMsg ?? 80;
-      const smsDisp = document.querySelector('#sms-cost-display');
-      if (smsDisp) smsDisp.textContent = data.smsCostPerMsg ?? 6;
       const senderIdInput = document.querySelector('#sms-sender-id');
       if (senderIdInput) senderIdInput.value = data.smsSenderId || '';
       const balDisp = document.querySelector('#wallet-balance-display');

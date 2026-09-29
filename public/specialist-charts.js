@@ -136,19 +136,15 @@
   function fdiToDisplayLabel(toothId) {
     const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId)) || FDI_PEDIATRIC_TEETH.find(t => t.id === String(toothId));
     if (!tooth) return `Tooth #${toothId}`;
-    const prefix = tooth.arch === 'upper'
-      ? (tooth.side === 'right' ? 'UR' : 'UL')
-      : (tooth.side === 'left' ? 'LL' : 'LR');
-    return `${prefix} ${tooth.toothNumber}`;
+    const prefixes = { '1': 'UR', '2': 'UL', '3': 'LL', '4': 'LR', '5': 'UR', '6': 'UL', '7': 'LL', '8': 'LR' };
+    return `${prefixes[tooth.quad] || ''} ${tooth.toothNumber}`;
   }
 
   function fdiFullLabel(toothId) {
     const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId)) || FDI_PEDIATRIC_TEETH.find(t => t.id === String(toothId));
     if (!tooth) return `Tooth #${toothId}`;
-    const prefix = tooth.arch === 'upper'
-      ? (tooth.side === 'right' ? 'Upper Right' : 'Upper Left')
-      : (tooth.side === 'left' ? 'Lower Left' : 'Lower Right');
-    return `${prefix} ${tooth.toothNumber} (${tooth.name})`;
+    const names = { '1': 'Upper Right', '2': 'Upper Left', '3': 'Lower Left', '4': 'Lower Right', '5': 'Upper Right', '6': 'Upper Left', '7': 'Lower Left', '8': 'Lower Right' };
+    return `${names[tooth.quad] || ''} ${tooth.toothNumber} (${tooth.name})`;
   }
 
   function describeDentalTarget(toothId) {
@@ -350,7 +346,7 @@
   /* ── Render FDI tooth chart with two straight rows ── */
   function renderFdiToothChartSvg(teethArray, title, container, findings = {}, onSelect = () => {}) {
     const upper = teethArray.filter((t) => t.arch === 'upper').sort((a, b) => parseInt(a.quad) - parseInt(b.quad));
-    const lower = teethArray.filter((t) => t.arch === 'lower').sort((a, b) => parseInt(a.quad) - parseInt(b.quad));
+    const lower = teethArray.filter((t) => t.arch === 'lower').sort((a, b) => parseInt(b.quad) - parseInt(a.quad));
     const toothW = 30, toothH = 42, gap = 3;
     const upperY = 90, lowerY = 240;
     const totalW = upper.length * (toothW + gap) + 120;
@@ -361,7 +357,13 @@
     [upper, lower].forEach((row, rowIdx) => {
       const baseY = rowIdx === 0 ? upperY : lowerY;
       const isUpper = rowIdx === 0;
-      row.forEach((tooth, idx) => {
+      // Lower row: reverse teeth within each quad so display shows outer→midline on left, midline→outer on right
+      const displayRow = isUpper ? row : (() => {
+        const quads = {};
+        row.forEach(t => { (quads[t.quad] = quads[t.quad] || []).push(t); });
+        return Object.values(quads).flatMap(q => q.reverse());
+      })();
+      displayRow.forEach((tooth, idx) => {
         const find = findings[tooth.id] || {};
         const multiVals = find.values || (find.value ? [find.value] : []);
         const finding = multiVals.length > 0 ? FINDING_BY_VALUE[multiVals[0]] : null;

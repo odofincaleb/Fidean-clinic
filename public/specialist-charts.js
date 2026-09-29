@@ -350,11 +350,11 @@
   function renderFdiToothChartSvg(teethArray, title, container, findings = {}, onSelect = () => {}) {
     const upper = teethArray.filter((t) => t.arch === 'upper').sort((a, b) => parseInt(a.quad) - parseInt(b.quad));
     const lower = teethArray.filter((t) => t.arch === 'lower').sort((a, b) => parseInt(a.quad) - parseInt(b.quad));
-    const toothW = 32, toothH = 44, gap = 4;
+    const toothW = 30, toothH = 42, gap = 3;
     const upperY = 90, lowerY = 240;
-    const totalW = upper.length * (toothW + gap) + 80;
-    const startX = Math.max(60, (640 - totalW) / 2);
-    const viewW = 640, viewH = 450;
+    const totalW = upper.length * (toothW + gap) + 120;
+    const startX = Math.max(70, (760 - totalW) / 2);
+    const viewW = 760, viewH = 450;
     const cells = [];
 
     [upper, lower].forEach((row, rowIdx) => {

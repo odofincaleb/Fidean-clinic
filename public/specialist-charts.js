@@ -93,26 +93,26 @@
    * Only 5 teeth per quadrant — no premolars/bicuspids in primary dentition.
    */
   const FDI_PEDIATRIC_TEETH = [
-    { id: '55', arch: 'upper', side: 'right', name: 'Second Molar', quad: '5' },
-    { id: '54', arch: 'upper', side: 'right', name: 'First Molar', quad: '5' },
-    { id: '53', arch: 'upper', side: 'right', name: 'Canine', quad: '5' },
-    { id: '52', arch: 'upper', side: 'right', name: 'Lateral Incisor', quad: '5' },
-    { id: '51', arch: 'upper', side: 'right', name: 'Central Incisor', quad: '5' },
-    { id: '61', arch: 'upper', side: 'left', name: 'Central Incisor', quad: '6' },
-    { id: '62', arch: 'upper', side: 'left', name: 'Lateral Incisor', quad: '6' },
-    { id: '63', arch: 'upper', side: 'left', name: 'Canine', quad: '6' },
-    { id: '64', arch: 'upper', side: 'left', name: 'First Molar', quad: '6' },
-    { id: '65', arch: 'upper', side: 'left', name: 'Second Molar', quad: '6' },
-    { id: '71', arch: 'lower', side: 'left', name: 'Central Incisor', quad: '7' },
-    { id: '72', arch: 'lower', side: 'left', name: 'Lateral Incisor', quad: '7' },
-    { id: '73', arch: 'lower', side: 'left', name: 'Canine', quad: '7' },
-    { id: '74', arch: 'lower', side: 'left', name: 'First Molar', quad: '7' },
-    { id: '75', arch: 'lower', side: 'left', name: 'Second Molar', quad: '7' },
-    { id: '81', arch: 'lower', side: 'right', name: 'Central Incisor', quad: '8' },
-    { id: '82', arch: 'lower', side: 'right', name: 'Lateral Incisor', quad: '8' },
-    { id: '83', arch: 'lower', side: 'right', name: 'Canine', quad: '8' },
-    { id: '84', arch: 'lower', side: 'right', name: 'First Molar', quad: '8' },
-    { id: '85', arch: 'lower', side: 'right', name: 'Second Molar', quad: '8' },
+    { id: '55', arch: 'upper', side: 'right', name: 'Second Molar', quad: '5', toothNumber: 5 },
+    { id: '54', arch: 'upper', side: 'right', name: 'First Molar', quad: '5', toothNumber: 4 },
+    { id: '53', arch: 'upper', side: 'right', name: 'Canine', quad: '5', toothNumber: 3 },
+    { id: '52', arch: 'upper', side: 'right', name: 'Lateral Incisor', quad: '5', toothNumber: 2 },
+    { id: '51', arch: 'upper', side: 'right', name: 'Central Incisor', quad: '5', toothNumber: 1 },
+    { id: '61', arch: 'upper', side: 'left', name: 'Central Incisor', quad: '6', toothNumber: 1 },
+    { id: '62', arch: 'upper', side: 'left', name: 'Lateral Incisor', quad: '6', toothNumber: 2 },
+    { id: '63', arch: 'upper', side: 'left', name: 'Canine', quad: '6', toothNumber: 3 },
+    { id: '64', arch: 'upper', side: 'left', name: 'First Molar', quad: '6', toothNumber: 4 },
+    { id: '65', arch: 'upper', side: 'left', name: 'Second Molar', quad: '6', toothNumber: 5 },
+    { id: '71', arch: 'lower', side: 'left', name: 'Central Incisor', quad: '7', toothNumber: 1 },
+    { id: '72', arch: 'lower', side: 'left', name: 'Lateral Incisor', quad: '7', toothNumber: 2 },
+    { id: '73', arch: 'lower', side: 'left', name: 'Canine', quad: '7', toothNumber: 3 },
+    { id: '74', arch: 'lower', side: 'left', name: 'First Molar', quad: '7', toothNumber: 4 },
+    { id: '75', arch: 'lower', side: 'left', name: 'Second Molar', quad: '7', toothNumber: 5 },
+    { id: '81', arch: 'lower', side: 'right', name: 'Central Incisor', quad: '8', toothNumber: 1 },
+    { id: '82', arch: 'lower', side: 'right', name: 'Lateral Incisor', quad: '8', toothNumber: 2 },
+    { id: '83', arch: 'lower', side: 'right', name: 'Canine', quad: '8', toothNumber: 3 },
+    { id: '84', arch: 'lower', side: 'right', name: 'First Molar', quad: '8', toothNumber: 4 },
+    { id: '85', arch: 'lower', side: 'right', name: 'Second Molar', quad: '8', toothNumber: 5 },
   ];
 
   const FINDING_OPTIONS = [
@@ -130,9 +130,10 @@
   const FINDING_BY_VALUE = Object.fromEntries(FINDING_OPTIONS.map((f) => [f.value, f]));
   const TOOTH_BY_ID = Object.fromEntries(UNIVERSAL_TEETH.map((tooth) => [tooth.id, tooth]));
   const FDI_BY_ID = Object.fromEntries(FDI_PERMANENT_TEETH.map((tooth) => [tooth.id, tooth]));
+  const FDI_PEDIATRIC_BY_ID = Object.fromEntries(FDI_PEDIATRIC_TEETH.map((tooth) => [tooth.id, tooth]));
 
   function fdiToDisplayLabel(toothId) {
-    const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId));
+    const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId)) || FDI_PEDIATRIC_TEETH.find(t => t.id === String(toothId));
     if (!tooth) return `Tooth #${toothId}`;
     const prefix = tooth.arch === 'upper'
       ? (tooth.side === 'right' ? 'UR' : 'UL')
@@ -141,7 +142,7 @@
   }
 
   function fdiFullLabel(toothId) {
-    const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId));
+    const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId)) || FDI_PEDIATRIC_TEETH.find(t => t.id === String(toothId));
     if (!tooth) return `Tooth #${toothId}`;
     const prefix = tooth.arch === 'upper'
       ? (tooth.side === 'right' ? 'Upper Right' : 'Upper Left')
@@ -338,7 +339,7 @@
       const first = selectedTeeth.values().next().value;
       const allTeeth = [...(FDI_PERMANENT_TEETH || []), ...(FDI_PEDIATRIC_TEETH || []), ...(UNIVERSAL_TEETH || [])];
       const tooth = allTeeth.find(t => t.id === first) || { id: first, name: 'Tooth' };
-      const display = FDI_BY_ID[first] ? fdiToDisplayLabel(first) : `Tooth #${tooth.id}`;
+      const display = (FDI_BY_ID[first] || FDI_PEDIATRIC_BY_ID[first]) ? fdiToDisplayLabel(first) : `Tooth #${tooth.id}`;
       header.innerHTML = `${escapeHtmlAttr(display)} — ${escapeHtmlAttr(tooth.name)}`;
     } else {
       header.textContent = 'Click teeth to select, then choose finding';
@@ -422,9 +423,9 @@ cells.push(`<g data-tooth-id="${tooth.id}" class="tooth-cell" role="button" tabi
   function renderToothFindingPanel(container, toothId, current, onSave, onClear) {
     const currentValue = current?.value || '';
     // Check FDI teeth first, fall back to Universal
-    let tooth = FDI_BY_ID[String(toothId)] || TOOTH_BY_ID[String(toothId)];
+    let tooth = FDI_BY_ID[String(toothId)] || FDI_PEDIATRIC_BY_ID[String(toothId)] || TOOTH_BY_ID[String(toothId)];
     if (!tooth) tooth = { id: toothId, name: 'Tooth', toothNumber: toothId };
-    const displayLabel = FDI_BY_ID[String(toothId)] ? fdiToDisplayLabel(toothId) : `Tooth #${tooth.id}`;
+    const displayLabel = (FDI_BY_ID[String(toothId)] || FDI_PEDIATRIC_BY_ID[String(toothId)]) ? fdiToDisplayLabel(toothId) : `Tooth #${tooth.id}`;
     container.innerHTML = `
       <div class="specialist-finding-panel" data-tooth-panel="${toothId}">
         <h4>${escapeHtmlAttr(displayLabel)} — ${escapeHtmlAttr(tooth.name)}</h4>
@@ -810,6 +811,7 @@ cells.push(`<g data-tooth-id="${tooth.id}" class="tooth-cell" role="button" tabi
     coordinatesFor: (type, targetId) => getModule(type)?.coordinatesFor?.(targetId),
     teeth: UNIVERSAL_TEETH,
     fdiTeeth: FDI_PERMANENT_TEETH,
+    fdiPediatricTeeth: FDI_PEDIATRIC_TEETH,
     findings: FINDING_OPTIONS,
     fdiToDisplayLabel,
     fdiFullLabel,

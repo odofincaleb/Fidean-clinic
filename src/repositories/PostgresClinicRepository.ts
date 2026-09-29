@@ -833,6 +833,7 @@ export class PostgresClinicRepository implements ClinicRepository {
       inventoryBatches: await this.listInventoryBatches(tenantId),
       inventoryMovements: await this.listInventoryMovements(tenantId),
       suppliers: await this.listSuppliers(tenantId),
+      walletTransactions: await this.getWalletTransactions(tenantId),
       offlineSync: true,
     };
   }

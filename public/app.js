@@ -3123,18 +3123,27 @@ async function loadLedger() {
   const toDate = document.querySelector('#ledger-date-to')?.value;
   const entries = [];
   inv.forEach(i => {
-    if (typeFilter === 'payment') return;
+    if (typeFilter === 'payment' || typeFilter === 'expense') return;
     const d = new Date(i.createdAt).toISOString().slice(0,10);
     if (fromDate && d < fromDate) return;
     if (toDate && d > toDate) return;
     entries.push({ date: d, type: 'Invoice', ref: i.invoiceNumber, desc: (i.lines||[]).map(l=>l.description).join(', '), total: i.totalKobo, hmo: i.hmoCoverageKobo || 0, paid: i.amountPaidKobo || 0 });
   });
   (pay || []).forEach(p => {
-    if (typeFilter === 'invoice') return;
+    if (typeFilter === 'invoice' || typeFilter === 'expense') return;
     const d = new Date(p.createdAt).toISOString().slice(0,10);
     if (fromDate && d < fromDate) return;
     if (toDate && d > toDate) return;
     entries.push({ date: d, type: 'Payment', ref: p.reference || p.id, desc: 'Paystack ' + (p.status || 'txn'), total: 0, hmo: 0, paid: p.amountKobo || 0 });
+  });
+  // Wallet transactions (expenses)
+  const wt = (snapshot.walletTransactions || []).filter(t => t.type === 'debit');
+  wt.forEach(t => {
+    if (typeFilter === 'invoice' || typeFilter === 'payment') return;
+    const d = new Date(t.createdAt).toISOString().slice(0,10);
+    if (fromDate && d < fromDate) return;
+    if (toDate && d > toDate) return;
+    entries.push({ date: d, type: 'Expense', ref: t.reason || 'debit', desc: t.description || '', total: 0, hmo: 0, paid: -t.amount });
   });
   entries.sort((a,b) => a.date.localeCompare(b.date) || a.ref.localeCompare(b.ref));
   const totalRevenue = entries.reduce((s,e) => s + e.paid, 0);
@@ -3194,6 +3203,19 @@ document.querySelector('#wallet-topup-btn')?.addEventListener('click', () => {
   modal.style.cssText = 'position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;background:rgba(0,0,0,0.7)!important;z-index:99999!important;display:flex!important;align-items:center!important;justify-content:center!important';
   modal.querySelector('.modal-card').style.cssText = 'background:#fff!important;border-radius:12px;padding:24px;min-width:340px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,0.2);position:relative;z-index:100000';
   document.querySelector('#wallet-topup-amount').value = 5000;
+});
+
+/* ── Wallet transactions link ── */
+document.querySelector('#wallet-transactions-link')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  // Switch to Ledger tab with Expense filter
+  document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(item => item.classList.remove('active'));
+  document.querySelector('[data-tab="ledger"]')?.classList.add('active');
+  document.querySelector('#ledger')?.classList.add('active');
+  document.querySelector('#ledger-type-filter').value = 'expense';
+  localStorage.setItem('clinic_active_tab', 'ledger');
+  loadLedger();
 });
 
 /* ── SMS Sender ID save ── */

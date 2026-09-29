@@ -464,6 +464,7 @@ export interface TenantSnapshot {
   inventoryBatches: InventoryBatch[];
   inventoryMovements: InventoryMovement[];
   suppliers: Supplier[];
+  walletTransactions: WalletTransaction[];
 }
 
 export type SyncEntityType = 'patient' | 'appointment' | 'encounter' | 'prescription' | 'invoice' | 'patientDocument';

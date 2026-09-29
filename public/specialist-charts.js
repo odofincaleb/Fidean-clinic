@@ -349,7 +349,7 @@
   /* ── Render FDI tooth chart with two straight rows ── */
   function renderFdiToothChartSvg(teethArray, title, container, findings = {}, onSelect = () => {}) {
     const upper = teethArray.filter((t) => t.arch === 'upper').sort((a, b) => parseInt(a.quad) - parseInt(b.quad));
-    const lower = teethArray.filter((t) => t.arch === 'lower').sort((a, b) => parseInt(b.quad) - parseInt(a.quad));
+    const lower = teethArray.filter((t) => t.arch === 'lower').sort((a, b) => parseInt(a.quad) - parseInt(b.quad));
     const toothW = 32, toothH = 44, gap = 4;
     const upperY = 90, lowerY = 240;
     const totalW = upper.length * (toothW + gap) + 80;

@@ -357,11 +357,15 @@
     [upper, lower].forEach((row, rowIdx) => {
       const baseY = rowIdx === 0 ? upperY : lowerY;
       const isUpper = rowIdx === 0;
-      // Lower row: reverse teeth within each quad so display shows outer→midline on left, midline→outer on right
+      // Lower row: reverse teeth within each quad (preserve quad order) so display shows outer→midline on left, midline→outer on right
       const displayRow = isUpper ? row : (() => {
-        const quads = {};
-        row.forEach(t => { (quads[t.quad] = quads[t.quad] || []).push(t); });
-        return Object.values(quads).flatMap(q => q.reverse());
+        const quadOrder = [];
+        const quads = new Map();
+        row.forEach(t => {
+          if (!quads.has(t.quad)) { quads.set(t.quad, []); quadOrder.push(t.quad); }
+          quads.get(t.quad).push(t);
+        });
+        return quadOrder.flatMap(q => quads.get(q).reverse());
       })();
       displayRow.forEach((tooth, idx) => {
         const find = findings[tooth.id] || {};

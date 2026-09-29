@@ -284,7 +284,9 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/tenants', async (request, reply) => {
     const input = tenantInput.parse(request.body);
-    return reply.code(201).send({ ok: true, tenant: await repo.createTenant(input) });
+    const tenant = await repo.createTenant(input);
+    await audit(repo, { tenantId: tenant.id, ...staffAudit(''), action: 'tenant_create', objectType: 'tenant', objectId: tenant.id });
+    return reply.code(201).send({ ok: true, tenant });
   });
 
   app.get('/api/tenants/:tenantId', async (request) => {
@@ -386,7 +388,9 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     }
     const input = patientInput.parse(request.body);
     assertSameTenant(auth.tenantId, input.tenantId);
-    return reply.code(201).send({ ok: true, patient: await repo.createPatient(input as PatientInput) });
+    const patient = await repo.createPatient(input as PatientInput);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'patient_create', objectType: 'patient', objectId: patient.id });
+    return reply.code(201).send({ ok: true, patient });
   });
 
   app.post('/api/patients/bulk-import', async (request) => {
@@ -444,7 +448,9 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     const patient = await repo.getPatient(params.patientId);
     if (!patient) throw httpError('PATIENT_NOT_FOUND', 404);
     assertSameTenant(auth.tenantId, patient.tenantId);
-    return { ok: true, patient: await repo.updatePatient(params.patientId, patientPatch.parse(request.body)) };
+    const updated = await repo.updatePatient(params.patientId, patientPatch.parse(request.body));
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'patient_update', objectType: 'patient', objectId: params.patientId });
+    return { ok: true, patient: updated };
   });
 
   app.get('/api/services', async (request) => {

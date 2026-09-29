@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
 import { httpError } from '../http/errors.js';
+import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
 
 export function registerWalletRoutes(app: FastifyInstance, repo: ClinicRepository): void {
@@ -132,9 +133,10 @@ export function registerWalletRoutes(app: FastifyInstance, repo: ClinicRepositor
             description: 'Wallet top-up via Paystack',
           });
         }
-        return reply.send({ ok: true, amount, tenantId });
-      }
-      throw httpError('PAYMENT_VERIFICATION_FAILED', 400);
+        await audit(repo, { tenantId, ...staffAudit(''), action: 'wallet_topup', objectType: 'wallet', objectId: tenantId, details: { amount, reference: body.reference } });
+            return reply.send({ ok: true, amount, tenantId });
+            }
+            throw httpError('PAYMENT_VERIFICATION_FAILED', 400);
     } catch (err) {
       if (err && typeof err === 'object' && 'statusCode' in err) throw err;
       throw httpError('PAYSTACK_VERIFICATION_ERROR', 502);

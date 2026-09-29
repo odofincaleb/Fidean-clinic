@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
 import { assertCan } from '../auth/rbac.js';
 import { httpError } from '../http/errors.js';
+import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
 
 export function registerReferralsRoutes(app: FastifyInstance, repo: ClinicRepository): void {
@@ -35,7 +36,9 @@ export function registerReferralsRoutes(app: FastifyInstance, repo: ClinicReposi
       notes: z.string().optional(),
     }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
-    return reply.code(201).send({ ok: true, referral: await repo.createReferral(input) });
+    const referral = await repo.createReferral(input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'referral_create', objectType: 'referral', objectId: referral.id });
+    return reply.code(201).send({ ok: true, referral });
   });
 
   app.patch('/api/referrals/:id', async (request) => {

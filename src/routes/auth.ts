@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireAuth, signToken } from '../auth/context.js';
 import { assertCan } from '../auth/rbac.js';
 import { httpError } from '../http/errors.js';
+import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
 
 const registerInput = z.object({
@@ -80,6 +81,7 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
     await repo.linkUserToMembership(member.id, user.id);
     const linked = (await repo.getMember(member.id)) ?? member;
     const token = signToken({ memberId: linked.id, tenantId: tenant.id, role: linked.role, email: linked.email });
+    await audit(repo, { tenantId: tenant.id, ...staffAudit(linked.id), action: 'tenant_create', objectType: 'tenant', objectId: tenant.id });
     return reply.code(201).send({ ok: true, token, tenant, member: linked, user: publicUser({ ...user, displayName: input.displayName }) });
   });
 
@@ -137,6 +139,7 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
     const member = await repo.getMember(p.id);
     if (!member || member.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
     await repo.deleteMember(p.id);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'staff_delete', objectType: 'member', objectId: p.id });
     return { ok: true };
   });
 

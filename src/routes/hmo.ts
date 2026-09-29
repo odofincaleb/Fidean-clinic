@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
 import { assertCan, canPerform } from '../auth/rbac.js';
 import { httpError } from '../http/errors.js';
+import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository, HmoInsurance } from '../repositories/ClinicRepository.js';
 
 export function registerHmoRoutes(app: FastifyInstance, repo: ClinicRepository): void {

@@ -107,7 +107,9 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
     }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
     assertBranchAccess(auth.member, input.branchId);
-    return reply.code(201).send({ ok: true, encounter: await repo.createEncounter(input) });
+    const createdEnc = await repo.createEncounter(input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'encounter_create', objectType: 'encounter', objectId: createdEnc.id });
+    return reply.code(201).send({ ok: true, encounter: createdEnc });
   });
 
   app.patch('/api/encounters/:encounterId', async (request) => {
@@ -126,7 +128,9 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       vitals,
       specialistData: z.record(z.string(), z.unknown()).optional(),
     }).parse(request.body);
-    return { ok: true, encounter: await repo.updateEncounter(params.encounterId, patch) };
+    const updatedEnc = await repo.updateEncounter(params.encounterId, patch);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'encounter_update', objectType: 'encounter', objectId: updatedEnc.id });
+    return { ok: true, encounter: updatedEnc };
   });
 
   // Sign encounter (also records the signing doctor)
@@ -190,7 +194,9 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       const patient = await repo.getPatient(input.patientId);
       if (!patient) throw httpError('PATIENT_NOT_FOUND', 404);
     }
-    return reply.code(201).send({ ok: true, prescription: await repo.createPrescription(input) });
+    const prescription = await repo.createPrescription(input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'prescription_create', objectType: 'prescription', objectId: prescription.id });
+    return reply.code(201).send({ ok: true, prescription });
   });
 
   app.patch('/api/prescriptions/:prescriptionId', async (request) => {
@@ -403,6 +409,8 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       notes: z.string().optional(),
     }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
-    return reply.code(201).send({ ok: true, document: await repo.createPatientDocument(input) });
+    const document = await repo.createPatientDocument(input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'patient_document_create', objectType: 'patient_document', objectId: document.id });
+    return reply.code(201).send({ ok: true, document });
   });
 }

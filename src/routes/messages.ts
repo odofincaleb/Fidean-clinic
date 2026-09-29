@@ -74,7 +74,8 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
         sentAt: new Date().toISOString(),
       });
 
-      return reply.code(201).send({ ok: true, message: sent, cost: actualCost, chargedUnits: actualUnits, balance: newBalance });
+      await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'message_send', objectType: 'message_log', objectId: sent.id, details: { channel: body.channel, cost: actualCost } });
+    return reply.code(201).send({ ok: true, message: sent, cost: actualCost, chargedUnits: actualUnits, balance: newBalance });
     }
 
     // Email: attempt real send via tenant SMTP; keep the log queued if SMTP isn't configured.

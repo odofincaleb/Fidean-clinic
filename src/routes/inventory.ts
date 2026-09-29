@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
 import { assertCan } from '../auth/rbac.js';
 import { httpError } from '../http/errors.js';
+import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
 
 const money = z.preprocess((value) => (value === '' || value === null ? undefined : value), z.number().int().nonnegative().optional());
@@ -35,7 +36,9 @@ export function registerInventoryRoutes(app: FastifyInstance, repo: ClinicReposi
       sellingPriceKobo: money,
     }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
-    return reply.code(201).send({ ok: true, item: await repo.createInventoryItem(input) });
+    const item = await repo.createInventoryItem(input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'inventory_create', objectType: 'inventory', objectId: item.id });
+    return reply.code(201).send({ ok: true, item });
   });
 
   app.patch('/api/inventory/:id', async (request) => {
@@ -121,6 +124,8 @@ export function registerInventoryRoutes(app: FastifyInstance, repo: ClinicReposi
       email: optString,
     }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
-    return reply.code(201).send({ ok: true, supplier: await repo.createSupplier(input) });
+    const supplier = await repo.createSupplier(input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'supplier_create', objectType: 'supplier', objectId: supplier.id });
+    return reply.code(201).send({ ok: true, supplier });
   });
 }

@@ -52,38 +52,38 @@
    * Lower left: 31–38, Lower right: 41–48
    */
   const FDI_PERMANENT_TEETH = [
-    { id: '18', arch: 'upper', side: 'right', name: 'Third Molar', quad: '1' },
-    { id: '17', arch: 'upper', side: 'right', name: 'Second Molar', quad: '1' },
-    { id: '16', arch: 'upper', side: 'right', name: 'First Molar', quad: '1' },
-    { id: '15', arch: 'upper', side: 'right', name: 'Second Bicuspid', quad: '1' },
-    { id: '14', arch: 'upper', side: 'right', name: 'First Bicuspid', quad: '1' },
-    { id: '13', arch: 'upper', side: 'right', name: 'Canine', quad: '1' },
-    { id: '12', arch: 'upper', side: 'right', name: 'Lateral Incisor', quad: '1' },
-    { id: '11', arch: 'upper', side: 'right', name: 'Central Incisor', quad: '1' },
-    { id: '21', arch: 'upper', side: 'left', name: 'Central Incisor', quad: '2' },
-    { id: '22', arch: 'upper', side: 'left', name: 'Lateral Incisor', quad: '2' },
-    { id: '23', arch: 'upper', side: 'left', name: 'Canine', quad: '2' },
-    { id: '24', arch: 'upper', side: 'left', name: 'First Bicuspid', quad: '2' },
-    { id: '25', arch: 'upper', side: 'left', name: 'Second Bicuspid', quad: '2' },
-    { id: '26', arch: 'upper', side: 'left', name: 'First Molar', quad: '2' },
-    { id: '27', arch: 'upper', side: 'left', name: 'Second Molar', quad: '2' },
-    { id: '28', arch: 'upper', side: 'left', name: 'Third Molar', quad: '2' },
-    { id: '31', arch: 'lower', side: 'left', name: 'Third Molar', quad: '3' },
-    { id: '32', arch: 'lower', side: 'left', name: 'Second Molar', quad: '3' },
-    { id: '33', arch: 'lower', side: 'left', name: 'First Molar', quad: '3' },
-    { id: '34', arch: 'lower', side: 'left', name: 'Second Bicuspid', quad: '3' },
-    { id: '35', arch: 'lower', side: 'left', name: 'First Bicuspid', quad: '3' },
-    { id: '36', arch: 'lower', side: 'left', name: 'Canine', quad: '3' },
-    { id: '37', arch: 'lower', side: 'left', name: 'Lateral Incisor', quad: '3' },
-    { id: '38', arch: 'lower', side: 'left', name: 'Central Incisor', quad: '3' },
-    { id: '41', arch: 'lower', side: 'right', name: 'Central Incisor', quad: '4' },
-    { id: '42', arch: 'lower', side: 'right', name: 'Lateral Incisor', quad: '4' },
-    { id: '43', arch: 'lower', side: 'right', name: 'Canine', quad: '4' },
-    { id: '44', arch: 'lower', side: 'right', name: 'First Bicuspid', quad: '4' },
-    { id: '45', arch: 'lower', side: 'right', name: 'Second Bicuspid', quad: '4' },
-    { id: '46', arch: 'lower', side: 'right', name: 'First Molar', quad: '4' },
-    { id: '47', arch: 'lower', side: 'right', name: 'Second Molar', quad: '4' },
-    { id: '48', arch: 'lower', side: 'right', name: 'Third Molar', quad: '4' },
+    { id: '18', arch: 'upper', side: 'right', name: 'Third Molar', quad: '1', toothNumber: 8 },
+    { id: '17', arch: 'upper', side: 'right', name: 'Second Molar', quad: '1', toothNumber: 7 },
+    { id: '16', arch: 'upper', side: 'right', name: 'First Molar', quad: '1', toothNumber: 6 },
+    { id: '15', arch: 'upper', side: 'right', name: 'Second Bicuspid', quad: '1', toothNumber: 5 },
+    { id: '14', arch: 'upper', side: 'right', name: 'First Bicuspid', quad: '1', toothNumber: 4 },
+    { id: '13', arch: 'upper', side: 'right', name: 'Canine', quad: '1', toothNumber: 3 },
+    { id: '12', arch: 'upper', side: 'right', name: 'Lateral Incisor', quad: '1', toothNumber: 2 },
+    { id: '11', arch: 'upper', side: 'right', name: 'Central Incisor', quad: '1', toothNumber: 1 },
+    { id: '21', arch: 'upper', side: 'left', name: 'Central Incisor', quad: '2', toothNumber: 1 },
+    { id: '22', arch: 'upper', side: 'left', name: 'Lateral Incisor', quad: '2', toothNumber: 2 },
+    { id: '23', arch: 'upper', side: 'left', name: 'Canine', quad: '2', toothNumber: 3 },
+    { id: '24', arch: 'upper', side: 'left', name: 'First Bicuspid', quad: '2', toothNumber: 4 },
+    { id: '25', arch: 'upper', side: 'left', name: 'Second Bicuspid', quad: '2', toothNumber: 5 },
+    { id: '26', arch: 'upper', side: 'left', name: 'First Molar', quad: '2', toothNumber: 6 },
+    { id: '27', arch: 'upper', side: 'left', name: 'Second Molar', quad: '2', toothNumber: 7 },
+    { id: '28', arch: 'upper', side: 'left', name: 'Third Molar', quad: '2', toothNumber: 8 },
+    { id: '38', arch: 'lower', side: 'left', name: 'Third Molar', quad: '3', toothNumber: 8 },
+    { id: '37', arch: 'lower', side: 'left', name: 'Second Molar', quad: '3', toothNumber: 7 },
+    { id: '36', arch: 'lower', side: 'left', name: 'First Molar', quad: '3', toothNumber: 6 },
+    { id: '35', arch: 'lower', side: 'left', name: 'Second Bicuspid', quad: '3', toothNumber: 5 },
+    { id: '34', arch: 'lower', side: 'left', name: 'First Bicuspid', quad: '3', toothNumber: 4 },
+    { id: '33', arch: 'lower', side: 'left', name: 'Canine', quad: '3', toothNumber: 3 },
+    { id: '32', arch: 'lower', side: 'left', name: 'Lateral Incisor', quad: '3', toothNumber: 2 },
+    { id: '31', arch: 'lower', side: 'left', name: 'Central Incisor', quad: '3', toothNumber: 1 },
+    { id: '41', arch: 'lower', side: 'right', name: 'Central Incisor', quad: '4', toothNumber: 1 },
+    { id: '42', arch: 'lower', side: 'right', name: 'Lateral Incisor', quad: '4', toothNumber: 2 },
+    { id: '43', arch: 'lower', side: 'right', name: 'Canine', quad: '4', toothNumber: 3 },
+    { id: '44', arch: 'lower', side: 'right', name: 'First Bicuspid', quad: '4', toothNumber: 4 },
+    { id: '45', arch: 'lower', side: 'right', name: 'Second Bicuspid', quad: '4', toothNumber: 5 },
+    { id: '46', arch: 'lower', side: 'right', name: 'First Molar', quad: '4', toothNumber: 6 },
+    { id: '47', arch: 'lower', side: 'right', name: 'Second Molar', quad: '4', toothNumber: 7 },
+    { id: '48', arch: 'lower', side: 'right', name: 'Third Molar', quad: '4', toothNumber: 8 },
   ];
 
   /* ── Dental: FDI (ISO 3950) Numbering System — Pediatric / Primary (Deciduous) ──
@@ -129,6 +129,25 @@
 
   const FINDING_BY_VALUE = Object.fromEntries(FINDING_OPTIONS.map((f) => [f.value, f]));
   const TOOTH_BY_ID = Object.fromEntries(UNIVERSAL_TEETH.map((tooth) => [tooth.id, tooth]));
+  const FDI_BY_ID = Object.fromEntries(FDI_PERMANENT_TEETH.map((tooth) => [tooth.id, tooth]));
+
+  function fdiToDisplayLabel(toothId) {
+    const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId));
+    if (!tooth) return `Tooth #${toothId}`;
+    const prefix = tooth.arch === 'upper'
+      ? (tooth.side === 'right' ? 'UR' : 'UL')
+      : (tooth.side === 'left' ? 'LL' : 'LR');
+    return `${prefix} ${tooth.toothNumber}`;
+  }
+
+  function fdiFullLabel(toothId) {
+    const tooth = FDI_PERMANENT_TEETH.find(t => t.id === String(toothId));
+    if (!tooth) return `Tooth #${toothId}`;
+    const prefix = tooth.arch === 'upper'
+      ? (tooth.side === 'right' ? 'Upper Right' : 'Upper Left')
+      : (tooth.side === 'left' ? 'Lower Left' : 'Lower Right');
+    return `${prefix} ${tooth.toothNumber} (${tooth.name})`;
+  }
 
   function describeDentalTarget(toothId) {
     const tooth = TOOTH_BY_ID[String(toothId)];
@@ -317,9 +336,10 @@
       header.textContent = `🦷 ${selectedTeeth.size} teeth selected (click to add/remove)`;
     } else if (selectedTeeth.size === 1) {
       const first = selectedTeeth.values().next().value;
-      const allTeeth = [...(window.FDI_PERMANENT_TEETH || []), ...(window.FDI_PEDIATRIC_TEETH || [])];
+      const allTeeth = [...(FDI_PERMANENT_TEETH || []), ...(FDI_PEDIATRIC_TEETH || []), ...(UNIVERSAL_TEETH || [])];
       const tooth = allTeeth.find(t => t.id === first) || { id: first, name: 'Tooth' };
-      header.innerHTML = `Tooth #${tooth.id} — ${escapeHtmlAttr(tooth.name)}`;
+      const display = FDI_BY_ID[first] ? fdiToDisplayLabel(first) : `Tooth #${tooth.id}`;
+      header.innerHTML = `${escapeHtmlAttr(display)} — ${escapeHtmlAttr(tooth.name)}`;
     } else {
       header.textContent = 'Click teeth to select, then choose finding';
     }
@@ -359,7 +379,7 @@ cells.push(`<g data-tooth-id="${tooth.id}" class="tooth-cell" role="button" tabi
           <g transform="translate(${x},${y})${flipY}">
             <path d="${path}" fill="${toothFill}" opacity="${finding ? '0.96' : '0.92'}" stroke="${stroke}" stroke-width="1.5" />
           </g>
-          <text x="${x + toothW/2}" y="${numberY}" text-anchor="middle" font-size="10" font-weight="900" fill="${labelFill}">${tooth.id}</text>
+          <text x="${x + toothW/2}" y="${numberY}" text-anchor="middle" font-size="10" font-weight="900" fill="${labelFill}">${tooth.toothNumber}</text>
           ${hasMulti ? `<circle cx="${x + toothW - 6}" cy="${numberY - 8}" r="6" fill="#6C5CE7" stroke="#fff" stroke-width="1" /><text x="${x + toothW - 6}" y="${numberY - 5}" text-anchor="middle" font-size="7" font-weight="900" fill="#fff">${multiVals.length}</text>` : ''}
         </g>`);
       });
@@ -401,10 +421,13 @@ cells.push(`<g data-tooth-id="${tooth.id}" class="tooth-cell" role="button" tabi
 
   function renderToothFindingPanel(container, toothId, current, onSave, onClear) {
     const currentValue = current?.value || '';
-    const tooth = TOOTH_BY_ID[String(toothId)] || { id: toothId, name: 'Tooth' };
+    // Check FDI teeth first, fall back to Universal
+    let tooth = FDI_BY_ID[String(toothId)] || TOOTH_BY_ID[String(toothId)];
+    if (!tooth) tooth = { id: toothId, name: 'Tooth', toothNumber: toothId };
+    const displayLabel = FDI_BY_ID[String(toothId)] ? fdiToDisplayLabel(toothId) : `Tooth #${tooth.id}`;
     container.innerHTML = `
       <div class="specialist-finding-panel" data-tooth-panel="${toothId}">
-        <h4>Tooth #${tooth.id} — ${escapeHtmlAttr(tooth.name)}</h4>
+        <h4>${escapeHtmlAttr(displayLabel)} — ${escapeHtmlAttr(tooth.name)}</h4>
         <div class="finding-picker">
           ${FINDING_OPTIONS.map((f) => `<button type="button" class="finding-pill ${currentValue === f.value ? 'active' : ''}" data-find-value="${f.value}" style="${currentValue === f.value ? `--pill-bg:${f.color}` : ''}"><i style="background:${f.color}"></i>${f.label}</button>`).join('')}
         </div>
@@ -786,6 +809,9 @@ cells.push(`<g data-tooth-id="${tooth.id}" class="tooth-cell" role="button" tabi
     describeTarget: (type, targetId) => getModule(type)?.describeTarget?.(targetId),
     coordinatesFor: (type, targetId) => getModule(type)?.coordinatesFor?.(targetId),
     teeth: UNIVERSAL_TEETH,
+    fdiTeeth: FDI_PERMANENT_TEETH,
     findings: FINDING_OPTIONS,
+    fdiToDisplayLabel,
+    fdiFullLabel,
   };
 })(window);

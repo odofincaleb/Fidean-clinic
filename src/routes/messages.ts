@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
 import { httpError } from '../http/errors.js';
+import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
 import { sendNotification } from '../notifications/provider.js';
 import { sendWhatsAppMessage } from '../notifications/whatsappSender.js';
@@ -11,12 +12,13 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
   app.post('/api/messages/send', async (request, reply) => {
     const auth = await requireAuth(request, repo);
     const body = z.object({
-      channel: z.enum(['email', 'sms', 'whatsapp']),
-      recipient: z.string().min(1),
-      subject: z.string().optional(),
-      body: z.string().min(1),
-      templateName: z.string().optional(), // e.g. 'clinic_announcement_msg'
-    }).parse(request.body);
+          channel: z.enum(['email', 'sms', 'whatsapp']),
+          recipient: z.string().min(1),
+          subject: z.string().optional(),
+          body: z.string().min(1),
+          templateName: z.string().optional(),
+          templateParams: z.array(z.string()).optional(),
+        }).parse(request.body);
 
     const settings = await repo.getSettings(auth.tenantId);
     const log = await repo.createMessageLog(auth.tenantId, {
@@ -46,7 +48,7 @@ export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicReposit
       const sendResult = body.channel === 'whatsapp'
         ? await sendWhatsAppMessage({
             to: body.recipient,
-            template: { name: templateName, bodyParams: [body.body] },
+            template: { name: templateName, bodyParams: body.templateParams || [body.body] },
           })
         : await sendSmsMessage({ to: body.recipient, body: body.body, senderId: settings?.smsSenderId || undefined });
       if (!sendResult.ok) {

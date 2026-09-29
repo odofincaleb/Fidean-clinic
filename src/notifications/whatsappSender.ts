@@ -28,7 +28,7 @@ export async function sendWhatsAppMessage(input: {
   accessToken?: string;
   template?: {
     name: string;             // e.g. 'clinic_announcement_msg'
-    language?: string;        // default 'en'
+    language?: string;        // default 'en_US' (Meta templates are registered as en_US, not en)
     bodyParams?: string[];    // body component parameters
   };
 }): Promise<WhatsAppSendResult> {
@@ -55,7 +55,7 @@ export async function sendWhatsAppMessage(input: {
       }
       payload.template = {
         name: input.template.name,
-        language: { code: input.template.language || 'en' },
+        language: { code: input.template.language || 'en_US' },
         components,
       };
     } else if (input.body?.trim()) {

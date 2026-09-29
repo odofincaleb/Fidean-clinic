@@ -2764,19 +2764,64 @@ document.querySelector('#broadcast-patient-search')?.addEventListener('input', f
   buildPatientCheckboxList(this.value);
 });
 
-/* ── Template preview ── */
+/* ── Template-specific input fields ── */
+function renderTemplateFields() {
+  const wrap = document.querySelector('#broadcast-template-fields');
+  if (!wrap) return;
+  const template = document.querySelector('#broadcast-template')?.value || 'clinic_announcement_msg';
+  const channel = document.querySelector('#broadcast-channel')?.value;
+  if (channel !== 'whatsapp') { wrap.innerHTML = ''; return; }
+  const fieldHtml = {
+    clinic_announcement_msg: '',
+    clinic_appointment_reminder: `<label>Appointment time
+        <input id="template-field-appointment" type="text" placeholder="e.g. 10:00 AM" />
+        <small style="color:var(--text-tertiary)">Template: "Your appointment at [Clinic] is tomorrow at {{time}}."</small>
+      </label>`,
+    clinic_payment_receipt_msg: `<label>Amount (₦)
+        <input id="template-field-amount" type="number" min="0" placeholder="e.g. 15000" />
+      </label>
+      <label>Receipt number
+        <input id="template-field-receipt" type="text" placeholder="e.g. INV-2026-001" />
+        <small style="color:var(--text-tertiary)">Template: "Thank you for your payment of ₦{{amount}} to [Clinic]. Your receipt number is {{receipt}}."</small>
+      </label>`,
+    clinic_health_tip_msg: `<label>Health tip
+        <input id="template-field-tip" type="text" placeholder="e.g. Drink water regularly" />
+        <small style="color:var(--text-tertiary)">Template: "Health tip from [Clinic]: {{tip}}..."</small>
+      </label>`,
+  }[template] || '';
+  wrap.innerHTML = fieldHtml;
+  updateTemplatePreview();
+}
+
+function buildTemplateParams(patient) {
+  const template = document.querySelector('#broadcast-template')?.value || 'clinic_announcement_msg';
+  const clinicName = currentSettings?.clinicName || (snapshot?.tenant?.name || 'Fidean Clinic');
+  switch (template) {
+    case 'clinic_appointment_reminder':
+      return [clinicName, document.querySelector('#template-field-appointment')?.value || 'your scheduled time'];
+    case 'clinic_payment_receipt_msg':
+      return [String(document.querySelector('#template-field-amount')?.value || '0'),
+              clinicName,
+              document.querySelector('#template-field-receipt')?.value || 'INV-0000'];
+    case 'clinic_health_tip_msg':
+      return [clinicName, document.querySelector('#template-field-tip')?.value || ''];
+    case 'clinic_announcement_msg':
+    default:
+      return [clinicName, (document.querySelector('#broadcast-body')?.value || '').trim()];
+  }
+}
 function getTemplatePreviewHtml(template, body, clinicName) {
   const name = clinicName || 'Clinic';
   switch (template) {
     case 'clinic_appointment_reminder':
-      return `<strong style="color:#374151">📅 Appointment Reminder</strong><br><span style="color:#6b7280">Dear {{Patient Name}},</span><br><span style="color:#6b7280">You have an appointment at {{Date & Time}}.</span><br><span style="color:#059669">— ${escapeHtml(name)}</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
+      return `<strong style="color:#374151">📅 Appointment Reminder</strong><br><span style="color:#6b7280">Your appointment at ${escapeHtml(name)} is tomorrow at <strong>{{time}}</strong>.</span><br><span style="color:#6b7280">Reply R to reschedule or C to confirm.</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
     case 'clinic_payment_receipt_msg':
-      return `<strong style="color:#374151">💳 Payment Receipt</strong><br><span style="color:#6b7280">Dear {{Patient Name}},</span><br><span style="color:#059669">₦{{Amount}} received.</span><br><span style="color:#6b7280">— ${escapeHtml(name)}</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
+      return `<strong style="color:#374151">💳 Payment Receipt</strong><br><span style="color:#6b7280">Thank you for your payment of NGN<strong>{{amount}}</strong> to ${escapeHtml(name)}. Your receipt number is <strong>{{receipt}}</strong>.</span><br><span style="color:#6b7280">This confirms your payment has been received.</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
     case 'clinic_health_tip_msg':
-      return `<strong style="color:#374151">🩺 Health Tip</strong><br><span style="color:#6b7280">${escapeHtml(name)}</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#059669">${escapeHtml(body)}</span>`;
+      return `<strong style="color:#374151">🩺 Health Tip</strong><br><span style="color:#6b7280">Health tip from ${escapeHtml(name)}: <strong>{{tip}}</strong></span><br><span style="color:#6b7280">For more health tips and to book an appointment, visit our website.</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
     case 'clinic_announcement_msg':
     default:
-      return `<strong style="color:#374151">📢 Announcement from ${escapeHtml(name)}</strong><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#059669">${escapeHtml(body)}</span>`;
+      return `<strong style="color:#374151">📢 Announcement from ${escapeHtml(name)}</strong><br><span style="color:#6b7280">Hello, this is an update from ${escapeHtml(name)}. <strong>{{message}}</strong></span><br><span style="color:#6b7280">For more information, please visit our website or contact us.</span><br><hr style="margin:6px 0;border:none;border-top:1px dashed #d1d5db"><span style="color:#374151">${escapeHtml(body)}</span>`;
   }
 }
 
@@ -2803,7 +2848,10 @@ document.querySelector('#broadcast-channel')?.addEventListener('change', functio
 });
 
 /* Wire template selector + body to preview update */
-document.querySelector('#broadcast-template')?.addEventListener('change', updateTemplatePreview);
+document.querySelector('#broadcast-template')?.addEventListener('change', () => {
+  renderTemplateFields();
+  updateTemplatePreview();
+});
 document.querySelector('#broadcast-body')?.addEventListener('input', updateTemplatePreview);
 
 /* Modify updateBroadcastPreview to also update template preview */
@@ -2853,6 +2901,9 @@ document.querySelector('#broadcast-send-btn')?.addEventListener('click', async (
       const payload = { channel, recipient: String(p.phone).trim(), body };
       if (channel === 'whatsapp') {
         payload.templateName = document.querySelector('#broadcast-template')?.value || 'clinic_announcement_msg';
+        // Build per-recipient template params (patient name auto-filled)
+        const paramValues = buildTemplateParams(p);
+        if (paramValues.some(v => v && String(v).trim())) payload.templateParams = paramValues;
       }
       const resp = await fetch('/api/messages/send', {
         method: 'POST', headers: headers(),

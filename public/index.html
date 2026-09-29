@@ -705,6 +705,7 @@
           <label>Message body
             <textarea id="broadcast-body" rows="4" placeholder="Type your broadcast message..." required></textarea>
           </label>
+          <!-- Template-specific fields (WhatsApp only) -->
           <div id="broadcast-template-wrap" style="margin-top:4px">
             <label>WhatsApp template
               <select id="broadcast-template">
@@ -714,6 +715,7 @@
                 <option value="clinic_health_tip_msg">🩺 Health Tip</option>
               </select>
             </label>
+            <div id="broadcast-template-fields" style="margin-top:6px"></div>
             <div id="broadcast-template-preview" class="broadcast-template-preview" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;font-size:.85rem;margin-top:6px;line-height:1.6"></div>
           </div>
           <div id="broadcast-preview" class="broadcast-preview" style="background:#f8f5ff;border-radius:12px;padding:12px 14px;font-size:.85rem">

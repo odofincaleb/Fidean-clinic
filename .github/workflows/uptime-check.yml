@@ -1,0 +1,151 @@
+name: Clinic SaaS uptime check
+
+# External uptime monitor for Fidean Clinic SaaS (169.58.111.70:4310).
+#
+# Runs on GitHub's infrastructure — NOT on the server being monitored — so it
+# still alerts when the whole host is down (the one case the on-host watchdog
+# cannot cover).
+#
+# Alerting: opens/updates a GitHub Issue and fails the run (GitHub then emails
+# the repo owner). No secrets are stored — this workflow needs no credentials.
+#
+# Companion to: ops/clinic-saas-watchdog.sh (on-host, 2-min, auto-heals).
+
+on:
+  schedule:
+    # GitHub's minimum interval; note scheduled runs can be delayed under load.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe health endpoint
+        id: probe
+        run: |
+          set +e
+          CODE=$(curl -s -m 20 -o /tmp/body.txt -w '%{http_code}' \
+                 http://169.58.111.70:4310/health)
+          BODY=$(cat /tmp/body.txt 2>/dev/null | head -c 300)
+          echo "http_code=$CODE"
+          echo "body=$BODY"
+
+          if [ "$CODE" = "200" ] && echo "$BODY" | grep -q '"ok":true'; then
+            echo "down=false" >> "$GITHUB_OUTPUT"
+            echo "✅ Clinic SaaS healthy (HTTP $CODE)"
+          else
+            echo "down=true" >> "$GITHUB_OUTPUT"
+            echo "🔴 Clinic SaaS UNREACHABLE (HTTP $CODE, body: $BODY)"
+          fi
+
+      - name: Open or update incident issue
+        if: steps.probe.outputs.down == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Ensure the 'incident' label exists so issue creation cannot fail
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'incident',
+              });
+            } catch (e) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'incident',
+                  color: 'B60205',
+                  description: 'Automated uptime incident',
+                });
+              } catch (e2) {
+                core.warning(`Could not ensure label: ${e2.message}`);
+              }
+            }
+
+            const title = '🔴 Clinic SaaS (4310) is DOWN';
+            const body = [
+              '**Automated external uptime check failed.**',
+              '',
+              `- Time: ${new Date().toISOString()}`,
+              '- Endpoint: `http://169.58.111.70:4310/health`',
+              `- Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              'This runs from GitHub infrastructure, so the server being fully',
+              'offline is a likely cause.',
+              '',
+              '**First checks:**',
+              '1. `pm2 list` on the host — process alive?',
+              '2. `bash ops/clinic-saas-deploy.sh` if the last change is suspect',
+              '3. `/root/.fidean-clinic-watchdog.log` for the on-host watchdog trail',
+              '',
+              'This issue closes automatically once the endpoint recovers.',
+            ].join('\n');
+
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'incident',
+              per_page: 20,
+            });
+
+            const existing = issues.data.find(i => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Still down — ${new Date().toISOString()}\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              });
+              core.notice(`Incident issue #${existing.number} commented (still down)`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['incident'],
+              });
+              core.notice(`Created incident issue #${created.data.number}`);
+            }
+
+      - name: Close incident issue on recovery
+        if: steps.probe.outputs.down == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'incident',
+              per_page: 20,
+            });
+            for (const i of issues.data) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: i.number,
+                body: `✅ Recovered — endpoint healthy again at ${new Date().toISOString()}. Closing.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: i.number,
+                state: 'closed',
+              });
+              core.notice(`Closed incident issue #${i.number} (recovered)`);
+            }
+
+      - name: Fail the run when the service is down
+        if: steps.probe.outputs.down == 'true'
+        run: |
+          echo "::error::Clinic SaaS health check FAILED — see the incident issue."
+          exit 1

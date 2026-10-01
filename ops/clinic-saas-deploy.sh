@@ -22,7 +22,10 @@ set -uo pipefail
 APP="fidean-clinic-saas"
 APP_DIR="/root/fidean_workspaces/fidean-clinic-saas"
 ECOSYSTEM="${DEPLOY_ECOSYSTEM:-$APP_DIR/ecosystem.config.cjs}"
-HEALTH_URL="http://127.0.0.1:4310/health"
+PORT="${DEPLOY_PORT:-4310}"
+HEALTH_URL_LOCAL="http://127.0.0.1:${PORT}/health"
+HEALTH_URL_EXTERNAL="${DEPLOY_EXTERNAL_URL:-http://169.58.111.70:${PORT}/health}"
+HEALTH_URL="$HEALTH_URL_LOCAL"
 CHECK_ONLY="${CHECK_ONLY:-0}"
 
 cd "$APP_DIR" || { echo "🔴 Cannot cd to $APP_DIR"; exit 1; }
@@ -109,20 +112,43 @@ fi
 
 # ── 4. Restart + verify ─────────────────────────────────────────────────────
 echo ""
-step "Restarting $APP..."
-pm2 restart "$APP" >/dev/null 2>&1
+step "Restarting $APP (startOrReload — reapplies HOST/PORT from ecosystem config)..."
+pm2 startOrReload ecosystem.config.cjs --only "$APP" >/dev/null 2>&1
 
-step "Waiting for /health to pass (max 40s)..."
+step "Waiting for /health to pass locally (max 40s)..."
 HEALTHY=0
 for i in $(seq 1 20); do
   sleep 2
-  R=$(curl -s -m 5 "$HEALTH_URL" 2>/dev/null || echo "")
+  R=$(curl -s -m 5 "$HEALTH_URL_LOCAL" 2>/dev/null || echo "")
   if echo "$R" | grep -q '"ok":true'; then
     HEALTHY=1
-    ok "healthy after $((i*2))s: $R"
+    ok "locally healthy after $((i*2))s: $R"
     break
   fi
 done
+
+# Binding assertion: an app bound to 127.0.0.1 answers on localhost but is
+# invisible to the internet. That is the exact regression behind the Oct 2026
+# outages, so a deploy must never be declared OK in that state.
+if [ "$HEALTHY" = "1" ]; then
+  step "Asserting port $PORT is bound to 0.0.0.0 (externally reachable)..."
+  if ss -tlnp 2>/dev/null | grep -q "0.0.0.0:$PORT"; then
+    ok "bound to 0.0.0.0:$PORT"
+  else
+    HEALTHY=0
+    bad "port $PORT is NOT bound to 0.0.0.0 — the app would be unreachable from outside"
+  fi
+fi
+
+if [ "$HEALTHY" = "1" ]; then
+  step "Asserting the public endpoint responds..."
+  if curl -s -m 10 "$HEALTH_URL_EXTERNAL" 2>/dev/null | grep -q '"ok":true'; then
+    ok "public endpoint OK ($HEALTH_URL_EXTERNAL)"
+  else
+    HEALTHY=0
+    bad "public endpoint did not respond ($HEALTH_URL_EXTERNAL)"
+  fi
+fi
 
 # ── 5. Outcome ──────────────────────────────────────────────────────────────
 if [ "$HEALTHY" = "1" ]; then
@@ -139,7 +165,7 @@ pm2 logs "$APP" --lines 20 --nostream 2>&1 | tail -25
 echo ""
 echo "--- rollback ---"
 echo "  cd $APP_DIR && git log --oneline -5"
-echo "  git checkout $REV -- . && pm2 restart $APP"
+echo "  git checkout $REV -- . && pm2 startOrReload ecosystem.config.cjs --only $APP"
 echo ""
 echo "=== 🔴 DEPLOY FAILED — manual attention needed ==="
 exit 1

@@ -588,9 +588,21 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.env.PORT ?? 4310);
-  const host = process.env.HOST ?? '127.0.0.1';
-  buildServer().listen({ port, host }).catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+  // Default to 0.0.0.0 (all interfaces).
+  // The previous fallback of 127.0.0.1 made the app reachable locally but
+  // invisible to the internet whenever HOST was absent from the process
+  // environment — which presents to users as a complete outage.
+  const host = process.env.HOST ?? '0.0.0.0';
+  if (!process.env.HOST) {
+    console.warn(`[BOOT] HOST not set — defaulting to ${host} (all interfaces)`);
+  }
+  buildServer()
+    .listen({ port, host })
+    .then(() => {
+      console.log(`[BOOT] fidean-clinic-saas listening on ${host}:${port}`);
+    })
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
 }

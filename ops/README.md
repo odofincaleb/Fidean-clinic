@@ -83,7 +83,7 @@ pm2 stop fidean-clinic-saas
 sudo -u postgres dropdb clinic && sudo -u postgres createdb clinic -O clinic
 sudo -u postgres pg_restore -d clinic --no-owner --no-privileges <DUMP>
 sudo -u postgres psql -d clinic -c "GRANT ALL ON ALL TABLES IN SCHEMA public TO clinic;"
-pm2 start fidean-clinic-saas && curl -s http://127.0.0.1:4310/health
+pm2 startOrReload ecosystem.config.cjs --only fidean-clinic-saas && curl -s http://169.58.111.70:4310/health
 ```
 
 **Note:** a dump restored with `--no-owner` leaves tables owned by `postgres`.

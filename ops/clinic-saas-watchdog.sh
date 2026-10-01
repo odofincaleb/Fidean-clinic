@@ -18,7 +18,14 @@ set -uo pipefail
 
 APP="fidean-clinic-saas"
 APP_DIR="/root/fidean_workspaces/fidean-clinic-saas"
-HEALTH_URL="${WATCHDOG_HEALTH_URL:-http://127.0.0.1:4310/health}"
+# Local liveness (is the app process serving?) vs public reachability
+# (can users actually get to it?). These are NOT the same thing: an app bound
+# to 127.0.0.1 answers on localhost but is invisible to the internet — which
+# is exactly how the Oct 2026 outages presented. HEALTH_URL is the public
+# endpoint, so the watchdog sees what users see.
+LOCAL_URL="${WATCHDOG_LOCAL_URL:-http://127.0.0.1:4310/health}"
+EXTERNAL_URL="${WATCHDOG_EXTERNAL_URL:-http://169.58.111.70:4310/health}"
+HEALTH_URL="${WATCHDOG_HEALTH_URL:-$EXTERNAL_URL}"
 STATE_FILE="/root/.fidean-clinic-watchdog.state"
 LOG_FILE="/root/.fidean-clinic-watchdog.log"
 PORT="${WATCHDOG_PORT:-4310}"
@@ -48,9 +55,14 @@ print('missing')
 " 2>/dev/null)
 [ "$PM2_STATUS" != "online" ] && FAILURES+=("pm2_status=$PM2_STATUS")
 
-# 2. HTTP health?
+# 2. Public HTTP health — the endpoint users actually hit
 HEALTH=$(curl -s -m 10 "$HEALTH_URL" 2>/dev/null || echo "")
 echo "$HEALTH" | grep -q '"ok":true' || FAILURES+=("health_unreachable")
+
+# 2b. Local liveness — separates "app is dead" from "app is alive but
+#     unreachable from outside" (the dangerous silent case)
+HEALTH_LOCAL=$(curl -s -m 10 "$LOCAL_URL" 2>/dev/null || echo "")
+echo "$HEALTH_LOCAL" | grep -q '"ok":true' || FAILURES+=("app_not_serving_locally")
 
 # 3. Bound to 0.0.0.0 (not 127.0.0.1)?
 ss -tlnp 2>/dev/null | grep -q "0.0.0.0:$PORT" || FAILURES+=("port_not_external")
@@ -82,11 +94,16 @@ else
     sleep 6
   fi
 
-  # Restart the app (fixes crash-loops, port binding, health failures)
+  # Restart the app (fixes crash-loops, port binding, health failures).
+  # Use startOrReload with the ecosystem file rather than plain `pm2 restart`:
+  # restart reuses whatever env the process already has, so a process that is
+  # somehow missing HOST comes back up bound to localhost only. startOrReload
+  # always reapplies HOST/PORT/NODE_ENV from ecosystem.config.cjs.
   if [ "$PM2_STATUS" != "online" ] || [[ " ${FAILURES[*]} " == *"health_unreachable"* ]] \
-     || [[ " ${FAILURES[*]} " == *"port_not_external"* ]]; then
-    log "attempting: pm2 restart $APP"
-    cd "$APP_DIR" 2>/dev/null && pm2 restart "$APP" >/dev/null 2>&1
+     || [[ " ${FAILURES[*]} " == *"port_not_external"* ]] \
+     || [[ " ${FAILURES[*]} " == *"app_not_serving_locally"* ]]; then
+    log "attempting: pm2 startOrReload ecosystem.config.cjs --only $APP"
+    cd "$APP_DIR" 2>/dev/null && pm2 startOrReload ecosystem.config.cjs --only "$APP" >/dev/null 2>&1
     sleep 10
   fi
 fi
@@ -103,7 +120,9 @@ print('missing')
 " 2>/dev/null)
 [ "$PM2_STATUS2" != "online" ] && RECHECK+=("pm2=$PM2_STATUS2")
 HEALTH2=$(curl -s -m 10 "$HEALTH_URL" 2>/dev/null || echo "")
-echo "$HEALTH2" | grep -q '"ok":true' || RECHECK+=("health")
+echo "$HEALTH2" | grep -q '"ok":true' || RECHECK+=("health_external")
+HEALTH2_LOCAL=$(curl -s -m 10 "$LOCAL_URL" 2>/dev/null || echo "")
+echo "$HEALTH2_LOCAL" | grep -q '"ok":true' || RECHECK+=("health_local")
 ss -tlnp 2>/dev/null | grep -q "0.0.0.0:$PORT" || RECHECK+=("port")
 pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null || RECHECK+=("postgres")
 

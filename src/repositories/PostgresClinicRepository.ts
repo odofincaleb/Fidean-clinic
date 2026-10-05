@@ -99,6 +99,7 @@ function mapMember(row: pg.QueryResultRow): Member {
   return {
     id: row.id,
     tenantId: row.tenant_id,
+    userId: row.user_id ?? undefined,
     email: String(row.email).toLowerCase(),
     displayName: row.display_name ?? undefined,
     role: row.role as Role,

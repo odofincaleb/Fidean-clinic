@@ -380,6 +380,11 @@ export class MemoryClinicRepository implements ClinicRepository {
     return { id: user.id, email: user.email };
   }
 
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) this.users.set(userId, { ...user, passwordHash });
+  }
+
   async findActiveMembershipByUserId(userId: string): Promise<Member | undefined> {
     const membershipId = [...this.memberUserIds.entries()].find(([, id]) => id === userId)?.[0];
     if (!membershipId) return undefined;

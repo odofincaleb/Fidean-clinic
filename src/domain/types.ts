@@ -36,6 +36,7 @@ export interface Branch {
 export interface Member {
   id: string;
   tenantId: string;
+  userId?: string;
   email: string;
   displayName?: string;
   role: Role;

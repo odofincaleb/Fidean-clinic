@@ -282,6 +282,7 @@ export interface ClinicRepository {
 
   findUserByEmail(email: string): Promise<AuthUser | undefined>;
   createUser(input: { email: string; passwordHash: string; displayName?: string }): Promise<{ id: string; email: string }>;
+  updateUserPassword(userId: string, passwordHash: string): Promise<void>;
   findActiveMembershipByUserId(userId: string): Promise<Member | undefined>;
   findMembershipByEmail(tenantId: string, email: string): Promise<Member | undefined>;
   linkUserToMembership(membershipId: string, userId: string): Promise<void>;

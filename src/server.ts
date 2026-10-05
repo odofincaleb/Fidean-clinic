@@ -36,6 +36,20 @@ const tenantInput = z.object({ name: z.string().min(2), slug: z.string().min(2).
 const tenantPatch = z.object({ name: z.string().min(2).optional(), status: z.enum(['active', 'trial', 'suspended']).optional(), slug: z.string().min(2).optional() });
 const branchInput = z.object({ tenantId: z.string().min(1), name: z.string().min(2), address: z.string().optional(), phone: z.string().optional() });
 const branchPatch = z.object({ name: z.string().min(2).optional(), address: z.string().optional(), phone: z.string().optional(), status: z.enum(['active', 'inactive']).optional() });
+// Platform super-admins reach a tenant through the admin portal and its tenant-access
+// token, not through a staff seat — so they are hidden from the tenant's staff list.
+// (Their membership row still exists: the audit trail references it by id.)
+async function visibleMembers(repo: ClinicRepository, tenantId: string) {
+  const members = await repo.listMembers(tenantId);
+  const out: typeof members = [];
+  for (const m of members) {
+    const user = await repo.findUserByEmail(m.email);
+    if (user?.isSuperAdmin) continue;
+    out.push(m);
+  }
+  return out;
+}
+
 const memberInput = z.object({
   tenantId: z.string().min(1),
   email: z.string().email(),
@@ -351,7 +365,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     if (!canPerform(auth.member.role, 'manage_staff') && auth.member.role !== 'branch_manager') {
       throw httpError('FORBIDDEN', 403);
     }
-    return { ok: true, members: await repo.listMembers(auth.tenantId) };
+    return { ok: true, members: await visibleMembers(repo, auth.tenantId) };
   });
 
   app.post('/api/members', async (request, reply) => {

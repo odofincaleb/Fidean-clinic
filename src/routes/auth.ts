@@ -163,11 +163,15 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
       qualifications: input.qualifications,
       licenseNumber: input.licenseNumber,
     });
-    // If password provided, create user account directly (skip invite email)
+    // If password provided, create user account directly (skip invite email).
+    // Must use linkUserToMembership(): updateMember() cannot write user_id, and
+    // login resolves the membership via findActiveMembershipByUserId(), so
+    // without this link the account gets NO_ACTIVE_MEMBERSHIP on login.
     if (input.password) {
       const passwordHash = await bcrypt.hash(input.password, 10);
       const user = await repo.createUser({ email, passwordHash, displayName: input.displayName });
-      await repo.updateMember(member.id, { status: 'active', userId: user.id });
+      await repo.linkUserToMembership(member.id, user.id);
+      await repo.updateMember(member.id, { status: 'active' });
     } else {
       const invited = await repo.updateMember(member.id, { status: 'active' });
     }

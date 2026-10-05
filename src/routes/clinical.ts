@@ -23,7 +23,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
     const auth = await requireAuth(request, repo);
     const query = z.object({ branchId: z.string().optional(), doctorMemberId: z.string().optional() }).parse(request.query);
     let schedules = await repo.listDoctorSchedules(auth.tenantId, query);
-    if (auth.member.role === 'branch_manager') {
+    if (auth.member.role === 'branch_manager' && auth.member.branchIds.length > 0) {
       schedules = schedules.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, schedules };
@@ -84,7 +84,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       appointmentId: z.string().optional(),
     }).parse(request.query);
     let encounters = await repo.listEncounters(auth.tenantId, query);
-    if (auth.member.role !== 'owner' && auth.member.role !== 'admin') {
+    if (auth.member.role !== 'owner' && auth.member.role !== 'admin' && auth.member.branchIds.length > 0) {
       encounters = encounters.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, encounters };
@@ -251,7 +251,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       status: z.enum(['draft', 'issued', 'part_paid', 'paid', 'void']).optional(),
     }).parse(request.query);
     let invoices = await repo.listInvoices(auth.tenantId, query);
-    if (auth.member.role === 'branch_manager') {
+    if (auth.member.role === 'branch_manager' && auth.member.branchIds.length > 0) {
       invoices = invoices.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, invoices };

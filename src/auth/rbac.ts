@@ -26,6 +26,9 @@ export function assertCan(role: Role, permission: Permission): void {
 
 export function canAccessBranch(member: Member, branchId: string): boolean {
   if (member.role === 'owner' || member.role === 'admin') return true;
+  // An empty branch list means "all branches" (matches listVisibleBranches), so a
+  // staff member with no explicit branch assignment can work in every branch.
+  if (member.branchIds.length === 0) return true;
   return member.branchIds.includes(branchId);
 }
 

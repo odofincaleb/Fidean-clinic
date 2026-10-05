@@ -503,10 +503,10 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
       status: z.enum(['requested', 'confirmed', 'checked_in', 'completed', 'cancelled', 'no_show']).optional(),
     }).parse(request.query);
     let appointments = await repo.listAppointments(auth.tenantId, query);
-    if (auth.member.role === 'branch_manager' || auth.member.role === 'receptionist') {
+    if ((auth.member.role === 'branch_manager' || auth.member.role === 'receptionist') && auth.member.branchIds.length > 0) {
       appointments = appointments.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
-    if (auth.member.role === 'doctor') {
+    if (auth.member.role === 'doctor' && auth.member.branchIds.length > 0) {
       appointments = appointments.filter((item) => item.doctorMemberId === auth.member.id || auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, appointments };
@@ -592,9 +592,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // The previous fallback of 127.0.0.1 made the app reachable locally but
   // invisible to the internet whenever HOST was absent from the process
   // environment — which presents to users as a complete outage.
-  const host = process.env.HOST ?? '0.0.0.0';
-  if (!process.env.HOST) {
-    console.warn(`[BOOT] HOST not set — defaulting to ${host} (all interfaces)`);
+  // NOTE: use `||` not `??` — an EMPTY HOST (e.g. `export HOST=` or an
+  // env-update restart) is NOT nullish, so `??` would hand '' to listen() and
+  // Node would bind a loopback/dual-stack address instead of 0.0.0.0.
+  const configuredHost = (process.env.HOST ?? '').trim();
+  const host = configuredHost || '0.0.0.0';
+  if (!configuredHost) {
+    console.warn(`[BOOT] HOST not set or empty — defaulting to ${host} (all interfaces)`);
+  }
+  if (host === '127.0.0.1' || host === 'localhost') {
+    console.warn(`[BOOT] WARNING: HOST=${host} binds loopback only — NOT reachable from the internet`);
   }
   buildServer()
     .listen({ port, host })

@@ -64,24 +64,43 @@ echo "$HEALTH" | grep -q '"ok":true' || FAILURES+=("health_unreachable")
 HEALTH_LOCAL=$(curl -s -m 10 "$LOCAL_URL" 2>/dev/null || echo "")
 echo "$HEALTH_LOCAL" | grep -q '"ok":true' || FAILURES+=("app_not_serving_locally")
 
-# 3. Bound to 0.0.0.0 (not 127.0.0.1)?
-ss -tlnp 2>/dev/null | grep -q "0.0.0.0:$PORT" || FAILURES+=("port_not_external")
+# 3. Reachable from outside?
+#    Accept ANY non-loopback bind (0.0.0.0, *, [::]) — Node may legitimately
+#    bind dual-stack, which `ss` renders as `*:PORT` or `[::]:PORT`, not
+#    `0.0.0.0:PORT`. The old exact-string grep flagged those as failures and
+#    restarted a perfectly healthy service. Fail only when the port is absent
+#    or bound to loopback exclusively.
+BOUND=$(ss -tln 2>/dev/null | awk -v p=":$PORT" 'index($4,p)>0 {print $4}' | head -5)
+if [ -z "$BOUND" ]; then
+  FAILURES+=("port_not_external(port_not_bound)")
+elif [ "$(printf '%s\n' "$BOUND" | grep -cvE '^(127\.0\.0\.1|\[::1\]):')" = "0" ]; then
+  FAILURES+=("port_not_external(loopback_only)")
+fi
 
 # 4. Postgres reachable?
 pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null || FAILURES+=("postgres_down")
 
 # --- healthy: stay silent ---------------------------------------------------
 if [ ${#FAILURES[@]} -eq 0 ]; then
-  # Clear incident state on recovery
+  # Clear incident state on recovery. Log-only: routine recoveries must NOT
+  # post to chat — they surface in the end-of-day summary instead.
   if [ -f "$STATE_FILE" ]; then
     rm -f "$STATE_FILE"
-    echo "✅ Clinic SaaS (4310) recovered — all checks passing again ($(ts))"
+    log "RECOVERED — all checks passing again"
   fi
   exit 0
 fi
 
 FAIL_STR=$(IFS=', '; echo "${FAILURES[*]}")
 log "UNHEALTHY: $FAIL_STR"
+
+# Forensic snapshot so the NEXT occurrence tells us exactly what the socket and
+# environment looked like (the 2026-10-01 churn was undiagnosable without this).
+{
+  echo "  diag bound=[$(ss -tln 2>/dev/null | awk -v p=":$PORT" 'index($4,p)>0 {print $4}' | tr '\n' ' ')]"
+  echo "  diag proc_env_HOST=[$(pgrep -f 'tsx src/server.ts' 2>/dev/null | head -1 | xargs -r -I{} sh -c 'tr "\0" "\n" < /proc/{}/environ 2>/dev/null | grep -m1 "^HOST="' 2>/dev/null)]"
+  echo "  diag last_boot=[$(grep -a '\[BOOT\]' /root/.pm2/logs/fidean-clinic-saas-out.log 2>/dev/null | tail -1)]"
+} >> "$LOG_FILE"
 
 # --- attempt recovery -------------------------------------------------------
 if [ "$DRY_RUN" = "1" ]; then
@@ -123,7 +142,8 @@ HEALTH2=$(curl -s -m 10 "$HEALTH_URL" 2>/dev/null || echo "")
 echo "$HEALTH2" | grep -q '"ok":true' || RECHECK+=("health_external")
 HEALTH2_LOCAL=$(curl -s -m 10 "$LOCAL_URL" 2>/dev/null || echo "")
 echo "$HEALTH2_LOCAL" | grep -q '"ok":true' || RECHECK+=("health_local")
-ss -tlnp 2>/dev/null | grep -q "0.0.0.0:$PORT" || RECHECK+=("port")
+BOUND2=$(ss -tln 2>/dev/null | awk -v p=":$PORT" 'index($4,p)>0 {print $4}' | grep -vE '^(127\.0\.0\.1|\[::1\]):' | head -1)
+[ -z "$BOUND2" ] && RECHECK+=("port")
 pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null || RECHECK+=("postgres")
 
 # --- alert (once per incident, cooldown-limited) ----------------------------
@@ -138,15 +158,11 @@ fi
 echo "$NOW:${#RECHECK[@]}" > "$STATE_FILE"
 
 if [ ${#RECHECK[@]} -eq 0 ]; then
-  echo "⚠️ Clinic SaaS (4310) went DOWN and was AUTO-RECOVERED at $(ts)"
-  echo ""
-  echo "Detected: $FAIL_STR"
-  echo "Action: restarted — now healthy."
-  echo "Health: $HEALTH2"
-  echo ""
-  echo "Log: $LOG_FILE"
+  # Auto-recovery succeeded — LOG ONLY, no chat noise. Counted in the
+  # end-of-day summary (see clinic-saas-daily-summary.sh).
   log "AUTO-RECOVERED"
 else
+  # Recovery FAILED — this is worth interrupting for: the service is still down.
   RECHECK_STR=$(IFS=', '; echo "${RECHECK[*]}")
   echo "🔴 Clinic SaaS (4310) is DOWN — AUTO-RECOVERY FAILED"
   echo ""

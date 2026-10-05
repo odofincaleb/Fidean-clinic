@@ -322,7 +322,11 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.get('/api/tenants/:tenantId/snapshot', async (request) => {
     const params = z.object({ tenantId: z.string() }).parse(request.params);
-    return { ok: true, snapshot: await repo.getTenantSnapshot(params.tenantId) };
+    const snapshot = await repo.getTenantSnapshot(params.tenantId);
+    // The portal renders its staff list from this snapshot, so it needs the same
+    // filtering as GET /api/members (super admins must not appear as staff).
+    snapshot.members = await visibleMembers(repo, params.tenantId);
+    return { ok: true, snapshot };
   });
 
   app.get('/api/branches', async (request) => {

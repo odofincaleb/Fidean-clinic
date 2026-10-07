@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=50" />
+  <link rel="stylesheet" href="/style.css?v=51" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -177,7 +177,7 @@
           <button class="sidebar-item" data-tab="patient-portal"><span class="icon">🔗</span>Patient Portal</button>
           <button class="sidebar-item" data-tab="notifications"><span class="icon">🔔</span>Notifications</button>
           <div class="sidebar-section">Admin</div>
-          <button class="sidebar-item" data-tab="messaging"><span class="icon">💬</span>Messaging</button>
+          <button class="sidebar-item" data-tab="messaging"><span class="icon">💬</span>Messaging<span id="msg-unread-badge" class="nav-badge" hidden></span></button>
           <button class="sidebar-item" data-tab="audit-logs"><span class="icon">📜</span>Audit Logs</button>
           <button class="sidebar-item" data-tab="ledger"><span class="icon">📒</span>Ledger</button>
           <button class="sidebar-item" data-tab="settings"><span class="icon">⚙️</span>Settings</button>
@@ -959,7 +959,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=rbac-v23" type="module"></script>
+  <script src="/app.js?v=rbac-v24" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

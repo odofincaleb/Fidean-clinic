@@ -159,6 +159,24 @@ function showErrorToast(message) {
   }, 5000);
 }
 
+function updateMsgUnreadBadge(count) {
+  const b = document.querySelector('#msg-unread-badge');
+  if (!b) return;
+  b.textContent = count > 0 ? String(count) : '';
+  b.hidden = count <= 0;
+}
+
+async function markAllStaffMessagesRead() {
+  try {
+    const res = await fetch('/api/staff-messages/read-all', { method: 'POST', headers: headers(), body: '{}' });
+    if (res.ok) {
+      const b = await res.json().catch(() => ({}));
+      updateMsgUnreadBadge(0);
+      if (b.marked) console.log('staff msgs marked read:', b.marked);
+    }
+  } catch (e) { /* non-fatal */ }
+}
+
 function compactFormData(data) {
   return Object.fromEntries(Object.entries(data).filter(([, value]) => String(value ?? '').trim() !== ''));
 }
@@ -805,6 +823,8 @@ function render() {
     const otherName = other ? (other.displayName || other.email) : '';
     return `<div class="message-thread${!item.readAt && !isSent ? ' msg-unread' : ''}"><div class="${isSent ? 'msg-sent' : 'msg-received'}"><strong>${isSent ? 'You' : otherName}</strong><p>${escapeHtml(item.body)}</p><p class="msg-meta">${item.subject ? safeText(item.subject) : ''} · ${new Date(item.createdAt).toLocaleString()}${item.readAt ? ' · Read' : ''}</p></div></div>`;
   }).join('') || '<p class="detail-empty">No messages yet.</p>';
+  // Unread-incoming notification badge on the Messaging tab (clears on open).
+  updateMsgUnreadBadge((staffMessages || []).filter(m => m.recipientMemberId === currentMemberId && !m.readAt).length);
   // Inventory MVP dashboard/products/batches/reports
   const invItems = snapshot.inventoryItems || [];
   const invBatches = snapshot.inventoryBatches || [];
@@ -1370,6 +1390,7 @@ document.querySelectorAll('.sidebar-item').forEach((tab) => {
     if (tab.dataset.tab === 'settings') { loadSettings(); loadMessageLog(); }
     if (tab.dataset.tab === 'reports') { loadReport(); }
     if (tab.dataset.tab === 'ledger') { loadLedger(); }
+    if (tab.dataset.tab === 'messaging') { markAllStaffMessagesRead(); }
   });
 });
 

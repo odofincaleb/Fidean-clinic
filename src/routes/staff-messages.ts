@@ -54,4 +54,17 @@ export function registerStaffMessagesRoutes(app: FastifyInstance, repo: ClinicRe
     if (msg.recipientMemberId !== auth.member.id) throw httpError('FORBIDDEN', 403);
     return { ok: true, message: await repo.markStaffMessageRead(params.id, auth.member.id) };
   });
+
+  app.post('/api/staff-messages/read-all', async (request) => {
+    const auth = await requireAuth(request, repo);
+    const messages = await repo.listStaffMessages(auth.tenantId, auth.member.id);
+    let marked = 0;
+    for (const m of messages) {
+      if (m.recipientMemberId === auth.member.id && !m.readAt) {
+        await repo.markStaffMessageRead(m.id, auth.member.id);
+        marked++;
+      }
+    }
+    return { ok: true, marked };
+  });
 }

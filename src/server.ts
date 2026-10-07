@@ -488,9 +488,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/services', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'manage_branches') && auth.member.role !== 'branch_manager') {
-      throw httpError('FORBIDDEN', 403);
-    }
+    assertCan(auth.member.role, 'manage_services');
     const input = serviceInput.parse(request.body);
     assertSameTenant(auth.tenantId, input.tenantId);
     if (auth.member.role === 'branch_manager' && input.branchId) assertBranchAccess(auth.member, input.branchId);
@@ -499,7 +497,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.delete('/api/services/:serviceId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member.role, 'manage_services');
     const params = z.object({ serviceId: z.string() }).parse(request.params);
     const service = await repo.getService(params.serviceId);
     if (!service) throw httpError('SERVICE_NOT_FOUND', 404);
@@ -510,9 +508,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.patch('/api/services/:serviceId', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'manage_branches') && auth.member.role !== 'branch_manager') {
-      throw httpError('FORBIDDEN', 403);
-    }
+    assertCan(auth.member.role, 'manage_services');
     const params = z.object({ serviceId: z.string() }).parse(request.params);
     const service = await repo.getService(params.serviceId);
     if (!service) throw httpError('SERVICE_NOT_FOUND', 404);

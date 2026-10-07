@@ -58,13 +58,13 @@ const PATIENT_IMPORT_FIELDS = [
 const PATIENT_TEMPLATE_HEADERS = ['Existing Patient ID','First Name','Last Name','Phone','Email','Alternate Phone','Date of Birth','Gender','Blood Group','Address','City','State','Medical History'];
 
 const ROLE_PERMS = {
-  owner:   ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_subscription','manage_inventory','send_staff_messages','manage_referrals'],
-  admin:   ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_inventory','send_staff_messages','manage_referrals'],
+  owner:   ['manage_staff','manage_branches','manage_services','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_subscription','manage_inventory','send_staff_messages','manage_referrals'],
+  admin:   ['manage_staff','manage_branches','manage_services','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_inventory','send_staff_messages','manage_referrals'],
   branch_manager: ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','view_billing','manage_billing','view_reports','send_staff_messages','manage_referrals'],
   doctor:  ['view_patients','write_encounter','manage_prescriptions','create_appointment','view_billing','send_staff_messages','manage_referrals'],
   receptionist: ['create_appointment','view_patients'],
   nurse:   ['view_patients','write_encounter','send_staff_messages'],
-  accountant: ['view_billing','manage_billing','view_reports'],
+  accountant: ['view_billing','manage_billing','manage_services','view_reports'],
   store_manager: ['manage_inventory','send_staff_messages'],
   viewer:  ['view_patients','view_reports'],
 };
@@ -94,7 +94,7 @@ function applyRBAC(force) {
   h('#patient-import-card', 'create_appointment');
   h('#availability-form', 'manage_appointments');
   h('#schedule-form', 'manage_appointments');
-  h('#service-form', 'manage_branches');
+  h('#service-form', 'manage_services');
   h('#notification-filter', 'manage_appointments');
   // Admin tabs
   const setTab = document.querySelector('.sidebar-item[data-tab="settings"]');
@@ -509,6 +509,7 @@ function render() {
     renderDashboard();
 
   const canManageBranches = can('manage_branches');
+  const canManageServices = can('manage_services');
   const canWriteEncounter = can('write_encounter');
   const canManagePrescriptions = can('manage_prescriptions');
   const canManageBilling = can('manage_billing');
@@ -576,7 +577,11 @@ function render() {
   }).join('');
 
   document.querySelector('#service-list').innerHTML = snapshot.services.map((service) =>
-    `<article><h3>${service.name}</h3><p>${service.durationMinutes} min · ₦${service.priceKobo.toLocaleString()}</p><div class="card-actions"><button data-edit-service="${service.id}" style="font-size:.78rem;padding:4px 10px">Edit</button><button data-delete-service="${service.id}" style="font-size:.78rem;padding:4px 10px;background:var(--danger)">Delete</button></div></article>`
+    `<article><h3>${service.name}</h3><p>${service.durationMinutes} min · ₦${service.priceKobo.toLocaleString()}</p>${
+      canManageServices
+        ? `<div class="card-actions"><button data-edit-service="${service.id}" style="font-size:.78rem;padding:4px 10px">Edit</button><button data-delete-service="${service.id}" style="font-size:.78rem;padding:4px 10px;background:var(--danger)">Delete</button></div>`
+        : ''
+    }</article>`
   ).join('');
 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

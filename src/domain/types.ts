@@ -4,6 +4,7 @@ export type Permission =
   | 'manage_subscription'
   | 'manage_staff'
   | 'manage_branches'
+  | 'manage_services'
   | 'manage_appointments'
   | 'create_appointment'
   | 'view_patients'

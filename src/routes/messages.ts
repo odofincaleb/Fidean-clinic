@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
+import { assertCan } from '../auth/rbac.js';
 import { httpError } from '../http/errors.js';
 import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
@@ -11,6 +12,7 @@ import { sendSmsMessage } from '../notifications/smsSender.js';
 export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicRepository): void {
   app.post('/api/messages/send', async (request, reply) => {
     const auth = await requireAuth(request, repo);
+    assertCan(auth.member.role, 'manage_broadcast');
     const body = z.object({
           channel: z.enum(['email', 'sms', 'whatsapp']),
           recipient: z.string().min(1),

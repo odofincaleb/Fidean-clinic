@@ -14,6 +14,9 @@ export type Permission =
   | 'view_reports'
   | 'manage_inventory'
   | 'send_staff_messages'
+  | 'manage_broadcast'
+  | 'view_ledger'
+  | 'view_audit_logs'
   | 'manage_referrals';
 
 export interface Tenant {

@@ -503,8 +503,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.get('/api/audit-logs', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_staff');
-    if (auth.member.role !== 'owner' && auth.member.role !== 'admin') throw httpError('FORBIDDEN', 403);
+    assertCan(auth.member.role, 'view_audit_logs');
     const query = z.object({
       objectType: z.string().optional(),
       objectId: z.string().optional(),

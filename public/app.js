@@ -58,13 +58,13 @@ const PATIENT_IMPORT_FIELDS = [
 const PATIENT_TEMPLATE_HEADERS = ['Existing Patient ID','First Name','Last Name','Phone','Email','Alternate Phone','Date of Birth','Gender','Blood Group','Address','City','State','Medical History'];
 
 const ROLE_PERMS = {
-  owner:   ['manage_staff','manage_branches','manage_services','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_subscription','manage_inventory','send_staff_messages','manage_referrals'],
-  admin:   ['manage_staff','manage_branches','manage_services','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_inventory','send_staff_messages','manage_referrals'],
-  branch_manager: ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','view_billing','manage_billing','view_reports','send_staff_messages','manage_referrals'],
+  owner:   ['manage_staff','manage_branches','manage_services','manage_broadcast','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_subscription','manage_inventory','send_staff_messages','view_ledger','view_audit_logs','manage_referrals'],
+  admin:   ['manage_staff','manage_branches','manage_services','manage_broadcast','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_inventory','send_staff_messages','view_ledger','view_audit_logs','manage_referrals'],
+  branch_manager: ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','view_billing','manage_billing','view_reports','manage_broadcast','send_staff_messages','view_ledger','view_audit_logs','manage_referrals'],
   doctor:  ['view_patients','write_encounter','manage_prescriptions','create_appointment','view_billing','send_staff_messages','manage_referrals'],
   receptionist: ['create_appointment','view_patients'],
   nurse:   ['view_patients','write_encounter','send_staff_messages'],
-  accountant: ['view_billing','manage_billing','manage_services','view_reports'],
+  accountant: ['view_billing','manage_billing','manage_services','view_reports','view_ledger'],
   store_manager: ['manage_inventory','send_staff_messages'],
   viewer:  ['view_patients','view_reports'],
 };
@@ -105,6 +105,12 @@ function applyRBAC(force) {
   if (msgTab) msgTab.hidden = !can('send_staff_messages');
   const invTab = document.querySelector('.sidebar-item[data-tab="inventory"]');
   if (invTab) invTab.hidden = !can('manage_inventory');
+  const ledTab = document.querySelector('.sidebar-item[data-tab="ledger"]');
+  if (ledTab) ledTab.hidden = !can('view_ledger');
+  const audTab = document.querySelector('.sidebar-item[data-tab="audit-logs"]');
+  if (audTab) audTab.hidden = !can('view_audit_logs');
+  const broadcastCard = document.querySelector('#broadcast-card');
+  if (broadcastCard) broadcastCard.hidden = !can('manage_broadcast');
 }
 
 function headers() {

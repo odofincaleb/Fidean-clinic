@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fidean-clinic-shell-v32';
+const CACHE_NAME = 'fidean-clinic-shell-v33';
 const SHELL = ['/', '/index.html', '/app.js', '/style.css', '/offline-db.js', '/offline-sync.js', '/api-base.js', '/specialist-charts.js'];
 
 self.addEventListener('install', (event) => {

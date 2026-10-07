@@ -19,8 +19,6 @@ export function registerStaffMessagesRoutes(app: FastifyInstance, repo: ClinicRe
     const auth = await requireAuth(request, repo);
     assertCan(auth.member.role, 'send_staff_messages');
     const input = z.object({
-      tenantId: z.string(),
-      senderMemberId: z.string(),
       recipientMemberId: z.string(),
       patientId: z.string().optional(),
       encounterId: z.string().optional(),
@@ -28,9 +26,23 @@ export function registerStaffMessagesRoutes(app: FastifyInstance, repo: ClinicRe
       subject: z.string().optional(),
       body: z.string().min(1),
     }).parse(request.body);
-    if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
-    if (input.senderMemberId !== auth.member.id) throw httpError('FORBIDDEN', 403);
-    return reply.code(201).send({ ok: true, message: await repo.createStaffMessage(input) });
+    // Sender + tenant come from the authenticated session, never the client body
+    // (the old schema required tenantId/senderMemberId from the form, which the
+    // form never sent → every send 400'd silently).
+    const recipient = await repo.getMember(input.recipientMemberId);
+    if (!recipient || recipient.tenantId !== auth.tenantId || recipient.status !== 'active') {
+      throw httpError('RECIPIENT_NOT_FOUND', 404);
+    }
+    return reply.code(201).send({ ok: true, message: await repo.createStaffMessage({
+      tenantId: auth.tenantId,
+      senderMemberId: auth.member.id,
+      recipientMemberId: input.recipientMemberId,
+      patientId: input.patientId,
+      encounterId: input.encounterId,
+      referralId: input.referralId,
+      subject: input.subject,
+      body: input.body,
+    }) });
   });
 
   app.post('/api/staff-messages/:id/read', async (request) => {

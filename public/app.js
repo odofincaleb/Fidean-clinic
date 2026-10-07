@@ -140,6 +140,25 @@ function showSuccessToast(message) {
   }, 3600);
 }
 
+function showErrorToast(message) {
+  const toast = document.querySelector('#success-toast');
+  if (!toast) return;
+  toast.textContent = '⚠ ' + message;
+  toast.style.background = '#fef2f2';
+  toast.style.color = '#b91c1c';
+  toast.style.borderColor = '#fca5a5';
+  toast.hidden = false;
+  toast.classList.add('show');
+  window.clearTimeout(showSuccessToast.timer);
+  showSuccessToast.timer = window.setTimeout(() => {
+    toast.classList.remove('show');
+    toast.hidden = true;
+    toast.style.background = '';
+    toast.style.color = '';
+    toast.style.borderColor = '';
+  }, 5000);
+}
+
 function compactFormData(data) {
   return Object.fromEntries(Object.entries(data).filter(([, value]) => String(value ?? '').trim() !== ''));
 }
@@ -2675,11 +2694,26 @@ document.querySelector('#logo-file-input')?.addEventListener('change', (e) => {
 /* ── Staff messaging ── */
 document.querySelector('#staff-message-form')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const fd = new FormData(e.target);
+  const form = e.target;
+  const fd = new FormData(form);
   const data = Object.fromEntries(fd.entries());
-  await fetch('/api/staff-messages', { method: 'POST', headers: headers(), body: JSON.stringify(data) });
-  e.target.reset();
-  await refresh();
+  const sel = document.querySelector('#msg-recipient-select');
+  const recipientName = (sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '').trim() || 'recipient';
+  try {
+    const res = await fetch('/api/staff-messages', { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = body.error === 'RECIPIENT_NOT_FOUND' ? 'Recipient not found'
+        : (body.error ? body.error : 'Failed to send (HTTP ' + res.status + ')');
+      showErrorToast(msg);
+      return;
+    }
+    form.reset();
+    await refresh();
+    showSuccessToast('Message sent to ' + recipientName);
+  } catch (err) {
+    showErrorToast('Could not send message: ' + (err.message || err));
+  }
 });
 
 /* ── Broadcast (WhatsApp / SMS) ── */

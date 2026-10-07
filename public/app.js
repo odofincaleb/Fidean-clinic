@@ -71,7 +71,9 @@ const ROLE_PERMS = {
 let currentRole = null;
 
 function can(perm) {
-  return currentRole ? (ROLE_PERMS[currentRole]?.includes(perm) ?? false) : true; // fallback: show all if no role
+  // Fail closed: before the session role is known, grant nothing.
+  if (!currentRole) return false;
+  return ROLE_PERMS[currentRole]?.includes(perm) ?? false;
 }
 
 function applyRBAC(force) {
@@ -563,9 +565,15 @@ function render() {
     return `<article><h3>${appt.serviceName}</h3><p>${patient?.firstName || 'Patient'} at ${branch?.name || 'Branch'} · ${appt.status}</p><small>${new Date(appt.startsAt).toLocaleString()}</small></article>`;
   }).join('');
 
-  document.querySelector('#member-list').innerHTML = snapshot.members.map((member) =>
-    `<article class="card-rich card-clickable" data-member-id="${member.id}"><h3>${member.displayName || member.email}</h3><p class="card-meta"><span class="badge badge-${member.status}">${member.status}</span> <span class="badge badge-${member.role}">${member.role}</span></p><div class="card-details">${member.email ? `<span>✉ ${member.email}</span>` : ''}${member.phone ? `<span>📞 ${member.phone}</span>` : ''}${member.specialization ? `<span>🔬 ${member.specialization}</span>` : ''}</div><div class="card-actions"><button data-edit-member="${member.id}" style="font-size:.78rem;padding:4px 10px" onclick="editMember('${member.id}')">Edit</button><button data-delete-member="${member.id}" style="font-size:.78rem;padding:4px 10px;background:var(--danger)" onclick="deleteMember('${member.id}')">Delete</button></div></article>`
-  ).join('');
+  document.querySelector('#member-list').innerHTML = snapshot.members.map((member) => {
+    // The owner seat is never deletable (server also enforces this), and a user
+    // may not delete their own seat — so don't render those Delete buttons.
+    const deletable = canManageStaff && member.role !== 'owner' && member.id !== currentMemberId;
+    const actions = canManageStaff
+      ? `<div class="card-actions"><button data-edit-member="${member.id}" style="font-size:.78rem;padding:4px 10px" onclick="editMember('${member.id}')">Edit</button>${deletable ? `<button data-delete-member="${member.id}" style="font-size:.78rem;padding:4px 10px;background:var(--danger)" onclick="deleteMember('${member.id}')">Delete</button>` : ''}</div>`
+      : '';
+    return `<article class="card-rich card-clickable" data-member-id="${member.id}"><h3>${member.displayName || member.email}</h3><p class="card-meta"><span class="badge badge-${member.status}">${member.status}</span> <span class="badge badge-${member.role}">${member.role}</span></p><div class="card-details">${member.email ? `<span>✉ ${member.email}</span>` : ''}${member.phone ? `<span>📞 ${member.phone}</span>` : ''}${member.specialization ? `<span>🔬 ${member.specialization}</span>` : ''}</div>${actions}</article>`;
+  }).join('');
 
   document.querySelector('#service-list').innerHTML = snapshot.services.map((service) =>
     `<article><h3>${service.name}</h3><p>${service.durationMinutes} min · ₦${service.priceKobo.toLocaleString()}</p><div class="card-actions"><button data-edit-service="${service.id}" style="font-size:.78rem;padding:4px 10px">Edit</button><button data-delete-service="${service.id}" style="font-size:.78rem;padding:4px 10px;background:var(--danger)">Delete</button></div></article>`
@@ -958,6 +966,7 @@ async function loadFromToken() {
   const body = await response.json();
   tenantId = body.tenant.id;
   currentRole = body.member?.role || 'viewer';
+  currentMemberId = body.member?.id || '';
   localStorage.setItem(TENANT_KEY, tenantId);
   setSession(token, tenantId, 'staff');
   await refresh();

@@ -391,7 +391,13 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     const member = await repo.getMember(params.memberId);
     if (!member) throw httpError('MEMBER_NOT_FOUND', 404);
     assertSameTenant(auth.tenantId, member.tenantId);
-    return { ok: true, member: await repo.updateMember(params.memberId, memberPatch.parse(request.body)) };
+    // Guard the owner account: never allow a member to demote the owner seat
+    // (including their own), and never demote someone else's owner seat.
+    const nextPatch = memberPatch.parse(request.body);
+    if (member.role === 'owner' && nextPatch.role && nextPatch.role !== 'owner') {
+      throw httpError('CANNOT_DEMOTE_OWNER', 403);
+    }
+    return { ok: true, member: await repo.updateMember(params.memberId, nextPatch) };
   });
 
   app.get('/api/patients', async (request) => {

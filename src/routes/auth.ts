@@ -123,6 +123,10 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
     const patch = z.object({ displayName: z.string().optional(), role: z.string().optional(), phone: z.string().optional(), specialization: z.string().optional(), qualifications: z.string().optional(), licenseNumber: z.string().optional(), password: z.string().min(8).optional() }).parse(request.body);
     const member = await repo.getMember(p.id);
     if (!member || member.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
+    // Guard the owner account: a member may not demote their own owner seat.
+    if (member.id === auth.member.id && member.role === 'owner' && patch.role && patch.role !== 'owner') {
+      throw httpError('CANNOT_DEMOTE_OWNER', 403);
+    }
     // If password provided, hash and update the user record
     if (patch.password) {
       const bcrypt = await import('bcryptjs').then(m => m.default);
@@ -135,9 +139,14 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
   // Staff: delete
   app.post('/api/staff/:id/delete', async (request, reply) => {
     const auth = await requireAuth(request, repo);
+    assertCan(auth.member.role, 'manage_staff');
     const p = z.object({ id: z.string() }).parse(request.params);
     const member = await repo.getMember(p.id);
     if (!member || member.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
+    // Guard the owner account and self-deletion: a user may not delete their own
+    // seat, and the owner seat is never deletable.
+    if (member.id === auth.member.id) throw httpError('CANNOT_DELETE_SELF', 403);
+    if (member.role === 'owner') throw httpError('CANNOT_DELETE_OWNER', 403);
     await repo.deleteMember(p.id);
     await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'staff_delete', objectType: 'member', objectId: p.id });
     return { ok: true };

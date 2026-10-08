@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=51" />
+  <link rel="stylesheet" href="/style.css?v=52" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -354,6 +354,17 @@
             <option value="accountant">Accountant</option>
             <option value="store_manager">Store Manager</option>
             <option value="admin">Admin</option>
+          </select></label>
+          <label>Additional Roles <span style="display:block;color:var(--text-tertiary);font-size:11px;margin-top:2px">Hold Ctrl/Cmd to select more. Use for staff with multiple duties (e.g. Nurse + Receptionist).</span>
+          <select name="additionalRoles" multiple>
+            <option value="doctor">Doctor</option>
+            <option value="receptionist">Receptionist</option>
+            <option value="nurse">Nurse</option>
+            <option value="branch_manager">Branch Manager</option>
+            <option value="accountant">Accountant</option>
+            <option value="store_manager">Store Manager</option>
+            <option value="admin">Admin</option>
+            <option value="viewer">Viewer</option>
           </select></label>
           <label>Specialization <select name="specialization" id="specialization-select">
             <option value="">None</option>
@@ -959,7 +970,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=rbac-v24" type="module"></script>
+  <script src="/app.js?v=rbac-v25" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

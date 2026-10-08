@@ -23,7 +23,7 @@ export function registerInventoryRoutes(app: FastifyInstance, repo: ClinicReposi
 
   app.post('/api/inventory', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_inventory');
+    assertCan(auth.member, 'manage_inventory');
     const input = z.object({
       tenantId: z.string(),
       name: z.string().min(1),
@@ -43,7 +43,7 @@ export function registerInventoryRoutes(app: FastifyInstance, repo: ClinicReposi
 
   app.patch('/api/inventory/:id', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_inventory');
+    assertCan(auth.member, 'manage_inventory');
     const params = z.object({ id: z.string() }).parse(request.params);
     const items = await repo.listInventoryItems(auth.tenantId);
     const item = items.find((i) => i.id === params.id);
@@ -74,7 +74,7 @@ export function registerInventoryRoutes(app: FastifyInstance, repo: ClinicReposi
 
   app.post('/api/inventory/:id/movement', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_inventory');
+    assertCan(auth.member, 'manage_inventory');
     const params = z.object({ id: z.string() }).parse(request.params);
     const items = await repo.listInventoryItems(auth.tenantId);
     const item = items.find((i) => i.id === params.id);
@@ -116,7 +116,7 @@ export function registerInventoryRoutes(app: FastifyInstance, repo: ClinicReposi
 
   app.post('/api/inventory/suppliers', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_inventory');
+    assertCan(auth.member, 'manage_inventory');
     const input = z.object({
       tenantId: z.string(),
       name: z.string().min(1),

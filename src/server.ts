@@ -22,7 +22,8 @@ import { registerUploadRoutes } from './routes/upload.js';
 import { registerInventoryRoutes } from './routes/inventory.js';
 import { registerHmoRoutes } from './routes/hmo.js';
 import { queuePatientNotification, staffAudit, audit } from './domain/clinicEvents.js';
-import { assertBranchAccess, assertCan, canPerform } from './auth/rbac.js';
+import { assertBranchAccess, assertCan, canPerform, memberCan } from './auth/rbac.js';
+import { hasRole } from './domain/types.js';
 import { httpError } from './http/errors.js';
 import type { ClinicRepository } from './repositories/ClinicRepository.js';
 import { getClinicRepository } from './repositories/index.js';
@@ -54,6 +55,7 @@ const memberInput = z.object({
   tenantId: z.string().min(1),
   email: z.string().email(),
   role: z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer']),
+  additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer'])).optional(),
   branchIds: z.array(z.string()).optional(),
   displayName: z.string().optional(),
   phone: z.string().optional(),
@@ -64,6 +66,7 @@ const memberInput = z.object({
 const memberPatch = z.object({
   displayName: z.string().optional(),
   role: z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer']).optional(),
+  additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer'])).optional(),
   branchIds: z.array(z.string()).optional(),
   status: z.enum(['invited', 'active', 'revoked']).optional(),
   phone: z.string().optional(),
@@ -197,7 +200,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
   // Super Admin: list all tenants
   app.get('/api/super-admin/tenants', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (auth.member.role !== 'owner' && auth.member.role !== 'admin' && auth.member.role !== 'super_admin') throw httpError('FORBIDDEN', 403);
+    if (!hasRole(auth.member, 'owner') && !hasRole(auth.member, 'admin') && auth.member.role !== 'super_admin') throw httpError('FORBIDDEN', 403);
     const tenants = await repo.listTenants();
     const result = [];
     for (const tenant of tenants) {
@@ -292,7 +295,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.get('/api/tenants', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_branches');
+    assertCan(auth.member, 'manage_branches');
     return { ok: true, tenants: (await repo.listTenants()).filter((tenant) => tenant.id === auth.tenantId) };
   });
 
@@ -314,7 +317,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.patch('/api/tenants/:tenantId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_subscription');
+    assertCan(auth.member, 'manage_subscription');
     const params = z.object({ tenantId: z.string() }).parse(request.params);
     assertSameTenant(auth.tenantId, params.tenantId);
     return { ok: true, tenant: await repo.updateTenant(params.tenantId, tenantPatch.parse(request.body)) };
@@ -341,7 +344,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/branches', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_branches');
+    assertCan(auth.member, 'manage_branches');
     const input = branchInput.parse(request.body);
     assertSameTenant(auth.tenantId, input.tenantId);
     return reply.code(201).send({ ok: true, branch: await repo.createBranch(input) });
@@ -349,7 +352,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.delete('/api/branches/:branchId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_branches');
+    assertCan(auth.member, 'manage_branches');
     const params = z.object({ branchId: z.string() }).parse(request.params);
     const branch = await repo.getBranch(params.branchId);
     if (!branch) throw httpError('BRANCH_NOT_FOUND', 404);
@@ -360,7 +363,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.patch('/api/branches/:branchId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_branches');
+    assertCan(auth.member, 'manage_branches');
     const params = z.object({ branchId: z.string() }).parse(request.params);
     const branch = await repo.getBranch(params.branchId);
     if (!branch) throw httpError('BRANCH_NOT_FOUND', 404);
@@ -370,7 +373,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.get('/api/members', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'manage_staff') && auth.member.role !== 'branch_manager') {
+    if (!memberCan(auth.member, 'manage_staff') && !hasRole(auth.member, 'branch_manager')) {
       throw httpError('FORBIDDEN', 403);
     }
     return { ok: true, members: await visibleMembers(repo, auth.tenantId) };
@@ -378,7 +381,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/members', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_staff');
+    assertCan(auth.member, 'manage_staff');
     const input = memberInput.parse(request.body);
     assertSameTenant(auth.tenantId, input.tenantId);
     return reply.code(201).send({ ok: true, member: await repo.addMember(input) });
@@ -386,7 +389,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.patch('/api/members/:memberId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_staff');
+    assertCan(auth.member, 'manage_staff');
     const params = z.object({ memberId: z.string() }).parse(request.params);
     const member = await repo.getMember(params.memberId);
     if (!member) throw httpError('MEMBER_NOT_FOUND', 404);
@@ -402,7 +405,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.get('/api/patients', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'view_patients');
+    assertCan(auth.member, 'view_patients');
     const query = z.object({ branchId: z.string().optional() }).parse(request.query);
     const patients = await repo.listPatients(auth.tenantId);
     const filtered = query.branchId ? patients.filter((p) => p.branchId === query.branchId) : patients;
@@ -411,7 +414,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/patients', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'create_appointment') && !canPerform(auth.member.role, 'manage_appointments')) {
+    if (!memberCan(auth.member, 'create_appointment') && !memberCan(auth.member, 'manage_appointments')) {
       throw httpError('FORBIDDEN', 403);
     }
     const input = patientInput.parse(request.body);
@@ -423,7 +426,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/patients/bulk-import', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'create_appointment') && !canPerform(auth.member.role, 'manage_appointments') && !canPerform(auth.member.role, 'manage_staff')) {
+    if (!memberCan(auth.member, 'create_appointment') && !memberCan(auth.member, 'manage_appointments') && !memberCan(auth.member, 'manage_staff')) {
       throw httpError('FORBIDDEN', 403);
     }
     const input = patientBulkImportInput.parse(request.body);
@@ -469,7 +472,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.patch('/api/patients/:patientId', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'create_appointment') && !canPerform(auth.member.role, 'manage_appointments')) {
+    if (!memberCan(auth.member, 'create_appointment') && !memberCan(auth.member, 'manage_appointments')) {
       throw httpError('FORBIDDEN', 403);
     }
     const params = z.object({ patientId: z.string() }).parse(request.params);
@@ -488,16 +491,16 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/services', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_services');
+    assertCan(auth.member, 'manage_services');
     const input = serviceInput.parse(request.body);
     assertSameTenant(auth.tenantId, input.tenantId);
-    if (auth.member.role === 'branch_manager' && input.branchId) assertBranchAccess(auth.member, input.branchId);
+    if (hasRole(auth.member, 'branch_manager') && input.branchId) assertBranchAccess(auth.member, input.branchId);
     return reply.code(201).send({ ok: true, service: await repo.createService(input) });
   });
 
   app.delete('/api/services/:serviceId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_services');
+    assertCan(auth.member, 'manage_services');
     const params = z.object({ serviceId: z.string() }).parse(request.params);
     const service = await repo.getService(params.serviceId);
     if (!service) throw httpError('SERVICE_NOT_FOUND', 404);
@@ -508,12 +511,12 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.patch('/api/services/:serviceId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_services');
+    assertCan(auth.member, 'manage_services');
     const params = z.object({ serviceId: z.string() }).parse(request.params);
     const service = await repo.getService(params.serviceId);
     if (!service) throw httpError('SERVICE_NOT_FOUND', 404);
     assertSameTenant(auth.tenantId, service.tenantId);
-    if (auth.member.role === 'branch_manager' && service.branchId) assertBranchAccess(auth.member, service.branchId);
+    if (hasRole(auth.member, 'branch_manager') && service.branchId) assertBranchAccess(auth.member, service.branchId);
     return { ok: true, service: await repo.updateService(params.serviceId, servicePatch.parse(request.body)) };
   });
 
@@ -527,10 +530,10 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
       status: z.enum(['requested', 'confirmed', 'checked_in', 'completed', 'cancelled', 'no_show']).optional(),
     }).parse(request.query);
     let appointments = await repo.listAppointments(auth.tenantId, query);
-    if ((auth.member.role === 'branch_manager' || auth.member.role === 'receptionist') && auth.member.branchIds.length > 0) {
+    if ((hasRole(auth.member, 'branch_manager') || hasRole(auth.member, 'receptionist')) && auth.member.branchIds.length > 0) {
       appointments = appointments.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
-    if (auth.member.role === 'doctor' && auth.member.branchIds.length > 0) {
+    if (hasRole(auth.member, 'doctor') && auth.member.branchIds.length > 0) {
       appointments = appointments.filter((item) => item.doctorMemberId === auth.member.id || auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, appointments };
@@ -538,7 +541,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/appointments', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'create_appointment');
+    assertCan(auth.member, 'create_appointment');
     const input = appointmentInput.parse(request.body);
     assertSameTenant(auth.tenantId, input.tenantId);
     assertBranchAccess(auth.member, input.branchId);
@@ -580,7 +583,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.patch('/api/appointments/:appointmentId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_appointments');
+    assertCan(auth.member, 'manage_appointments');
     const params = z.object({ appointmentId: z.string() }).parse(request.params);
     const appointment = await repo.getAppointment(params.appointmentId);
     if (!appointment) throw httpError('APPOINTMENT_NOT_FOUND', 404);
@@ -591,7 +594,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
 
   app.post('/api/appointments/:appointmentId/transition', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_appointments');
+    assertCan(auth.member, 'manage_appointments');
     const params = z.object({ appointmentId: z.string() }).parse(request.params);
     const appointment = await repo.getAppointment(params.appointmentId);
     if (!appointment) throw httpError('APPOINTMENT_NOT_FOUND', 404);

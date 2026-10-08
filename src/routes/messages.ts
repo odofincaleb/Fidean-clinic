@@ -12,7 +12,7 @@ import { sendSmsMessage } from '../notifications/smsSender.js';
 export function registerMessagesRoutes(app: FastifyInstance, repo: ClinicRepository): void {
   app.post('/api/messages/send', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_broadcast');
+    assertCan(auth.member, 'manage_broadcast');
     const body = z.object({
           channel: z.enum(['email', 'sms', 'whatsapp']),
           recipient: z.string().min(1),

@@ -1,5 +1,6 @@
 import { httpError } from '../http/errors.js';
 import type { Appointment, DoctorSchedule, Member, Service } from './types.js';
+import { hasRole } from './types.js';
 
 const BLOCKING = new Set(['requested', 'confirmed', 'checked_in', 'completed']);
 
@@ -36,7 +37,7 @@ export function resolveDurationMinutes(input: { serviceId?: string; serviceName:
 
 export function assertDoctorForBooking(doctor: Member | undefined, branchId: string): Member {
   if (!doctor || doctor.status !== 'active') throw httpError('INVALID_DOCTOR', 404);
-  if (doctor.role !== 'doctor') throw httpError('INVALID_DOCTOR', 400);
+  if (!hasRole(doctor, 'doctor')) throw httpError('INVALID_DOCTOR', 400);
   if (doctor.branchIds.length > 0 && !doctor.branchIds.includes(branchId)) throw httpError('INVALID_DOCTOR', 400);
   return doctor;
 }

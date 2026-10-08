@@ -9,7 +9,7 @@ import type { ClinicRepository } from '../repositories/ClinicRepository.js';
 export function registerReferralsRoutes(app: FastifyInstance, repo: ClinicRepository): void {
   app.get('/api/referrals', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_referrals');
+    assertCan(auth.member, 'manage_referrals');
     const query = z.object({
       patientId: z.string().optional(),
       encounterId: z.string().optional(),
@@ -21,7 +21,7 @@ export function registerReferralsRoutes(app: FastifyInstance, repo: ClinicReposi
 
   app.post('/api/referrals', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_referrals');
+    assertCan(auth.member, 'manage_referrals');
     const input = z.object({
       tenantId: z.string(),
       encounterId: z.string(),
@@ -43,7 +43,7 @@ export function registerReferralsRoutes(app: FastifyInstance, repo: ClinicReposi
 
   app.patch('/api/referrals/:id', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_referrals');
+    assertCan(auth.member, 'manage_referrals');
     const params = z.object({ id: z.string() }).parse(request.params);
     const referrals = await repo.listReferrals(auth.tenantId, {});
     const referral = referrals.find((r) => r.id === params.id);

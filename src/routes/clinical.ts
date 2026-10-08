@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
-import { assertBranchAccess, assertCan, canPerform } from '../auth/rbac.js';
+import { assertBranchAccess, assertCan, canPerform, memberCan } from '../auth/rbac.js';
+import { hasRole, type Member } from '../domain/types.js';
 import { httpError } from '../http/errors.js';
 import { audit, queuePatientNotification, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
@@ -14,8 +15,8 @@ const vitals = z.object({
   pulseBpm: z.number().optional(),
 }).optional();
 
-function canManageSchedules(role: string): boolean {
-  return role === 'owner' || role === 'admin' || role === 'branch_manager';
+function canManageSchedules(m: Member): boolean {
+  return hasRole(m, 'owner') || hasRole(m, 'admin') || hasRole(m, 'branch_manager');
 }
 
 export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicRepository): void {
@@ -23,7 +24,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
     const auth = await requireAuth(request, repo);
     const query = z.object({ branchId: z.string().optional(), doctorMemberId: z.string().optional() }).parse(request.query);
     let schedules = await repo.listDoctorSchedules(auth.tenantId, query);
-    if (auth.member.role === 'branch_manager' && auth.member.branchIds.length > 0) {
+    if (hasRole(auth.member, 'branch_manager') && auth.member.branchIds.length > 0) {
       schedules = schedules.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, schedules };
@@ -31,7 +32,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.post('/api/doctor-schedules', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageSchedules(auth.member.role)) throw httpError('FORBIDDEN', 403);
+    if (!canManageSchedules(auth.member)) throw httpError('FORBIDDEN', 403);
     const input = z.object({
       tenantId: z.string(),
       branchId: z.string(),
@@ -48,7 +49,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.patch('/api/doctor-schedules/:scheduleId', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageSchedules(auth.member.role)) throw httpError('FORBIDDEN', 403);
+    if (!canManageSchedules(auth.member)) throw httpError('FORBIDDEN', 403);
     const params = z.object({ scheduleId: z.string() }).parse(request.params);
     const schedule = await repo.getDoctorSchedule(params.scheduleId);
     if (!schedule) throw httpError('SCHEDULE_NOT_FOUND', 404);
@@ -65,7 +66,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.delete('/api/doctor-schedules/:scheduleId', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageSchedules(auth.member.role)) throw httpError('FORBIDDEN', 403);
+    if (!canManageSchedules(auth.member)) throw httpError('FORBIDDEN', 403);
     const params = z.object({ scheduleId: z.string() }).parse(request.params);
     const schedule = await repo.getDoctorSchedule(params.scheduleId);
     if (!schedule) throw httpError('SCHEDULE_NOT_FOUND', 404);
@@ -77,14 +78,14 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.get('/api/encounters', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'view_patients');
+    assertCan(auth.member, 'view_patients');
     const query = z.object({
       patientId: z.string().optional(),
       branchId: z.string().optional(),
       appointmentId: z.string().optional(),
     }).parse(request.query);
     let encounters = await repo.listEncounters(auth.tenantId, query);
-    if (auth.member.role !== 'owner' && auth.member.role !== 'admin' && auth.member.branchIds.length > 0) {
+    if (!hasRole(auth.member, 'owner') && !hasRole(auth.member, 'admin') && auth.member.branchIds.length > 0) {
       encounters = encounters.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, encounters };
@@ -92,7 +93,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.post('/api/encounters', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'write_encounter');
+    assertCan(auth.member, 'write_encounter');
     const input = z.object({
       tenantId: z.string(),
       branchId: z.string(),
@@ -114,7 +115,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.patch('/api/encounters/:encounterId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'write_encounter');
+    assertCan(auth.member, 'write_encounter');
     const params = z.object({ encounterId: z.string() }).parse(request.params);
     const encounter = await repo.getEncounter(params.encounterId);
     if (!encounter) throw httpError('ENCOUNTER_NOT_FOUND', 404);
@@ -136,7 +137,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
   // Sign encounter (also records the signing doctor)
   app.post('/api/encounters/:encounterId/sign', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'write_encounter');
+    assertCan(auth.member, 'write_encounter');
     const params = z.object({ encounterId: z.string() }).parse(request.params);
     const encounter = await repo.getEncounter(params.encounterId);
     if (!encounter) throw httpError('ENCOUNTER_NOT_FOUND', 404);
@@ -149,7 +150,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.delete('/api/encounters/:encounterId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'write_encounter');
+    assertCan(auth.member, 'write_encounter');
     const params = z.object({ encounterId: z.string() }).parse(request.params);
     const encounter = await repo.getEncounter(params.encounterId);
     if (!encounter) throw httpError('ENCOUNTER_NOT_FOUND', 404);
@@ -161,14 +162,14 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.get('/api/prescriptions', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'view_patients');
+    assertCan(auth.member, 'view_patients');
     const query = z.object({ patientId: z.string().optional(), encounterId: z.string().optional() }).parse(request.query);
     return { ok: true, prescriptions: await repo.listPrescriptions(auth.tenantId, query) };
   });
 
   app.post('/api/prescriptions', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'write_encounter');
+    assertCan(auth.member, 'write_encounter');
     const input = z.object({
       tenantId: z.string(),
       encounterId: z.string().optional(),
@@ -201,7 +202,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.patch('/api/prescriptions/:prescriptionId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'write_encounter');
+    assertCan(auth.member, 'write_encounter');
     const params = z.object({ prescriptionId: z.string() }).parse(request.params);
     const prescription = await repo.getPrescription(params.prescriptionId);
     if (!prescription) throw httpError('PRESCRIPTION_NOT_FOUND', 404);
@@ -222,8 +223,8 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.post('/api/prescriptions/:prescriptionId/issue', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'write_encounter');
-    if (auth.member.role === 'nurse') throw httpError('FORBIDDEN', 403);
+    assertCan(auth.member, 'write_encounter');
+    if (hasRole(auth.member, 'nurse')) throw httpError('FORBIDDEN', 403);
     const params = z.object({ prescriptionId: z.string() }).parse(request.params);
     const prescription = await repo.getPrescription(params.prescriptionId);
     if (!prescription) throw httpError('PRESCRIPTION_NOT_FOUND', 404);
@@ -243,7 +244,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.get('/api/invoices', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'view_billing') && !canPerform(auth.member.role, 'manage_billing')) {
+    if (!memberCan(auth.member, 'view_billing') && !memberCan(auth.member, 'manage_billing')) {
       throw httpError('FORBIDDEN', 403);
     }
     const query = z.object({
@@ -251,7 +252,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
       status: z.enum(['draft', 'issued', 'part_paid', 'paid', 'void']).optional(),
     }).parse(request.query);
     let invoices = await repo.listInvoices(auth.tenantId, query);
-    if (auth.member.role === 'branch_manager' && auth.member.branchIds.length > 0) {
+    if (hasRole(auth.member, 'branch_manager') && auth.member.branchIds.length > 0) {
       invoices = invoices.filter((item) => auth.member.branchIds.includes(item.branchId));
     }
     return { ok: true, invoices };
@@ -259,7 +260,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.post('/api/invoices', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member, 'manage_billing');
     const input = z.object({
       tenantId: z.string(),
       branchId: z.string(),
@@ -286,7 +287,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.patch('/api/invoices/:invoiceId', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member, 'manage_billing');
     const params = z.object({ invoiceId: z.string() }).parse(request.params);
     const invoice = await repo.getInvoice(params.invoiceId);
     if (!invoice) throw httpError('INVOICE_NOT_FOUND', 404);
@@ -320,7 +321,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.post('/api/invoices/:invoiceId/payment', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member, 'manage_billing');
     const params = z.object({ invoiceId: z.string() }).parse(request.params);
     const invoice = await repo.getInvoice(params.invoiceId);
     if (!invoice) throw httpError('INVOICE_NOT_FOUND', 404);
@@ -341,7 +342,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.post('/api/invoices/:invoiceId/issue', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member, 'manage_billing');
     const params = z.object({ invoiceId: z.string() }).parse(request.params);
     const invoice = await repo.getInvoice(params.invoiceId);
     if (!invoice) throw httpError('INVOICE_NOT_FOUND', 404);
@@ -377,7 +378,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.post('/api/invoices/:invoiceId/void', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member, 'manage_billing');
     const params = z.object({ invoiceId: z.string() }).parse(request.params);
     const invoice = await repo.getInvoice(params.invoiceId);
     if (!invoice) throw httpError('INVOICE_NOT_FOUND', 404);
@@ -389,14 +390,14 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
 
   app.get('/api/patient-documents', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'view_patients');
+    assertCan(auth.member, 'view_patients');
     const query = z.object({ patientId: z.string().optional(), encounterId: z.string().optional() }).parse(request.query);
     return { ok: true, documents: await repo.listPatientDocuments(auth.tenantId, query) };
   });
 
   app.post('/api/patient-documents', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'write_encounter') && !canPerform(auth.member.role, 'create_appointment')) {
+    if (!memberCan(auth.member, 'write_encounter') && !memberCan(auth.member, 'create_appointment')) {
       throw httpError('FORBIDDEN', 403);
     }
     const input = z.object({

@@ -27,6 +27,7 @@ const loginInput = z.object({
 const inviteInput = z.object({
   email: z.string().email(),
   role: z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'store_manager', 'viewer']),
+  additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'store_manager', 'viewer'])).optional(),
   branchIds: z.array(z.string()).optional(),
   displayName: z.string().optional(),
   phone: z.string().optional(),
@@ -118,9 +119,9 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
   // Staff: update
   app.post('/api/staff/:id/update', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_staff');
+    assertCan(auth.member, 'manage_staff');
     const p = z.object({ id: z.string() }).parse(request.params);
-    const patch = z.object({ displayName: z.string().optional(), role: z.string().optional(), phone: z.string().optional(), specialization: z.string().optional(), qualifications: z.string().optional(), licenseNumber: z.string().optional(), password: z.string().min(8).optional() }).parse(request.body);
+    const patch = z.object({ displayName: z.string().optional(), role: z.string().optional(), additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'store_manager', 'viewer'])).optional(), phone: z.string().optional(), specialization: z.string().optional(), qualifications: z.string().optional(), licenseNumber: z.string().optional(), password: z.string().min(8).optional() }).parse(request.body);
     const member = await repo.getMember(p.id);
     if (!member || member.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
     // Guard the owner account: a member may not demote their own owner seat.
@@ -139,7 +140,7 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
   // Staff: delete
   app.post('/api/staff/:id/delete', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_staff');
+    assertCan(auth.member, 'manage_staff');
     const p = z.object({ id: z.string() }).parse(request.params);
     const member = await repo.getMember(p.id);
     if (!member || member.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
@@ -154,7 +155,7 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
 
   app.post('/api/tenants/:tenantId/invite', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_staff');
+    assertCan(auth.member, 'manage_staff');
     const params = z.object({ tenantId: z.string() }).parse(request.params);
     if (auth.tenantId !== params.tenantId) throw httpError('FORBIDDEN', 403);
     const input = inviteInput.parse(request.body);

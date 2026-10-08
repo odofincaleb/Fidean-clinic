@@ -44,6 +44,8 @@ export interface Member {
   email: string;
   displayName?: string;
   role: Role;
+  /** Extra roles a member holds in addition to their primary `role` (e.g. owner who is also a doctor). */
+  additionalRoles?: Role[];
   branchIds: string[];
   status: 'invited' | 'active' | 'revoked';
   phone?: string;
@@ -51,6 +53,16 @@ export interface Member {
   qualifications?: string;
   licenseNumber?: string;
   createdAt: string;
+}
+
+/** The full set of roles a member holds (primary + additional, deduplicated). */
+export function memberRoles(m: Member): Role[] {
+  return Array.from(new Set([m.role, ...(m.additionalRoles ?? [])]));
+}
+
+/** True when the member holds the given role (primary or additional). */
+export function hasRole(m: Member, role: Role): boolean {
+  return memberRoles(m).includes(role);
 }
 
 export interface Patient {

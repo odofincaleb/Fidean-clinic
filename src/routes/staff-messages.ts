@@ -17,7 +17,7 @@ export function registerStaffMessagesRoutes(app: FastifyInstance, repo: ClinicRe
 
   app.post('/api/staff-messages', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'send_staff_messages');
+    assertCan(auth.member, 'send_staff_messages');
     const input = z.object({
       recipientMemberId: z.string(),
       patientId: z.string().optional(),

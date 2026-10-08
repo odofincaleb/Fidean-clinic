@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { requireAuth, requirePatientAuth, signPatientToken } from '../auth/context.js';
 import { ACTIVATION_TTL_MS, PASSWORD_RESET_TTL_MS, expiresAt, hashToken, newDevToken } from '../auth/tokens.js';
-import { assertCan, canPerform } from '../auth/rbac.js';
+import { assertCan, canPerform, memberCan } from '../auth/rbac.js';
+import { hasRole, type Member } from '../domain/types.js';
 import { toPublicPatientAccount } from '../domain/clinical.js';
 import { audit, patientAudit, staffAudit } from '../domain/clinicEvents.js';
 import { httpError } from '../http/errors.js';
@@ -22,25 +23,25 @@ const notificationType = z.enum([
   'patient_password_reset',
 ]);
 
-function canInvitePatient(role: string): boolean {
-  return role === 'owner' || role === 'admin' || role === 'receptionist' || role === 'doctor';
+function canInvitePatient(m: Member): boolean {
+  return hasRole(m, 'owner') || hasRole(m, 'admin') || hasRole(m, 'receptionist') || hasRole(m, 'doctor');
 }
 
-function canManageNotifications(role: string): boolean {
-  return role === 'owner' || role === 'admin';
+function canManageNotifications(m: Member): boolean {
+  return hasRole(m, 'owner') || hasRole(m, 'admin');
 }
 
 export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepository): void {
   app.get('/api/patient-accounts', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canInvitePatient(auth.member.role) || !canPerform(auth.member.role, 'view_patients')) throw httpError('FORBIDDEN', 403);
+    if (!canInvitePatient(auth.member) || !memberCan(auth.member, 'view_patients')) throw httpError('FORBIDDEN', 403);
     const accounts = await repo.listPatientAccounts(auth.tenantId);
     return { ok: true, accounts: accounts.map(toPublicPatientAccount) };
   });
 
   app.post('/api/patient-auth/invite', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    if (!canInvitePatient(auth.member.role) || !canPerform(auth.member.role, 'view_patients')) throw httpError('FORBIDDEN', 403);
+    if (!canInvitePatient(auth.member) || !memberCan(auth.member, 'view_patients')) throw httpError('FORBIDDEN', 403);
     const input = z.object({ tenantId: z.string(), patientId: z.string(), email: z.string().email() }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
     const patient = await repo.getPatient(input.patientId);
@@ -92,7 +93,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.post('/api/patient-auth/bulk-invite', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    if (!canInvitePatient(auth.member.role) || !canPerform(auth.member.role, 'view_patients')) throw httpError('FORBIDDEN', 403);
+    if (!canInvitePatient(auth.member) || !memberCan(auth.member, 'view_patients')) throw httpError('FORBIDDEN', 403);
     const input = z.object({ tenantId: z.string(), patientIds: z.array(z.string()).min(1).max(200) }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
 
@@ -164,7 +165,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.post('/api/patient-auth/:accountId/resend-invite', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canInvitePatient(auth.member.role) || !canPerform(auth.member.role, 'view_patients')) throw httpError('FORBIDDEN', 403);
+    if (!canInvitePatient(auth.member) || !memberCan(auth.member, 'view_patients')) throw httpError('FORBIDDEN', 403);
     const params = z.object({ accountId: z.string() }).parse(request.params);
     const account = await repo.getPatientAccount(params.accountId);
     if (!account || account.tenantId !== auth.tenantId) throw httpError('PATIENT_ACCOUNT_NOT_FOUND', 404);
@@ -212,7 +213,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.post('/api/patient-auth/:accountId/disable', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (auth.member.role !== 'owner' && auth.member.role !== 'admin') throw httpError('FORBIDDEN', 403);
+    if (!hasRole(auth.member, 'owner') && !hasRole(auth.member, 'admin')) throw httpError('FORBIDDEN', 403);
     const params = z.object({ accountId: z.string() }).parse(request.params);
     const account = await repo.getPatientAccount(params.accountId);
     if (!account || account.tenantId !== auth.tenantId) throw httpError('PATIENT_ACCOUNT_NOT_FOUND', 404);
@@ -401,7 +402,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.get('/api/notifications', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageNotifications(auth.member.role) && auth.member.role !== 'receptionist' && auth.member.role !== 'accountant') {
+    if (!canManageNotifications(auth.member) && !hasRole(auth.member, 'receptionist') && !hasRole(auth.member, 'accountant')) {
       throw httpError('FORBIDDEN', 403);
     }
     const query = z.object({
@@ -425,9 +426,9 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
       subject: z.string().optional(),
       body: z.string().min(1),
     }).parse(request.body);
-    if (!canManageNotifications(auth.member.role)) {
-      const receptionistOk = auth.member.role === 'receptionist' && (input.type === 'appointment_created' || input.type === 'patient_portal_invite' || input.type === 'appointment_reminder');
-      const accountantOk = auth.member.role === 'accountant' && (input.type === 'invoice_issued' || input.type === 'invoice_payment_received');
+    if (!canManageNotifications(auth.member)) {
+      const receptionistOk = hasRole(auth.member, 'receptionist') && (input.type === 'appointment_created' || input.type === 'patient_portal_invite' || input.type === 'appointment_reminder');
+      const accountantOk = hasRole(auth.member, 'accountant') && (input.type === 'invoice_issued' || input.type === 'invoice_payment_received');
       if (!receptionistOk && !accountantOk) throw httpError('FORBIDDEN', 403);
     }
     const job = await repo.queueNotification({
@@ -446,7 +447,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.post('/api/notifications/:jobId/send-dry-run', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageNotifications(auth.member.role)) throw httpError('FORBIDDEN', 403);
+    if (!canManageNotifications(auth.member)) throw httpError('FORBIDDEN', 403);
     const params = z.object({ jobId: z.string() }).parse(request.params);
     const job = await repo.getNotificationJob(params.jobId);
     if (!job || job.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
@@ -469,7 +470,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.post('/api/notifications/:jobId/mark-sent', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageNotifications(auth.member.role)) throw httpError('FORBIDDEN', 403);
+    if (!canManageNotifications(auth.member)) throw httpError('FORBIDDEN', 403);
     const params = z.object({ jobId: z.string() }).parse(request.params);
     const job = await repo.getNotificationJob(params.jobId);
     if (!job || job.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
@@ -480,7 +481,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.post('/api/notifications/:jobId/mark-failed', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageNotifications(auth.member.role)) throw httpError('FORBIDDEN', 403);
+    if (!canManageNotifications(auth.member)) throw httpError('FORBIDDEN', 403);
     const params = z.object({ jobId: z.string() }).parse(request.params);
     const body = z.object({ error: z.string().min(1) }).parse(request.body ?? { error: 'failed' });
     const job = await repo.getNotificationJob(params.jobId);
@@ -492,7 +493,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.post('/api/notifications/:jobId/cancel', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canManageNotifications(auth.member.role)) throw httpError('FORBIDDEN', 403);
+    if (!canManageNotifications(auth.member)) throw httpError('FORBIDDEN', 403);
     const params = z.object({ jobId: z.string() }).parse(request.params);
     const job = await repo.getNotificationJob(params.jobId);
     if (!job || job.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
@@ -503,7 +504,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.get('/api/audit-logs', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'view_audit_logs');
+    assertCan(auth.member, 'view_audit_logs');
     const query = z.object({
       objectType: z.string().optional(),
       objectId: z.string().optional(),
@@ -514,7 +515,7 @@ export function registerPortalRoutes(app: FastifyInstance, repo: ClinicRepositor
 
   app.get('/api/system/status', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (auth.member.role !== 'owner' && auth.member.role !== 'admin') throw httpError('FORBIDDEN', 403);
+    if (!hasRole(auth.member, 'owner') && !hasRole(auth.member, 'admin')) throw httpError('FORBIDDEN', 403);
     return {
       ok: true,
       service: SERVICE_NAME,

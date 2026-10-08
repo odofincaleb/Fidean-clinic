@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../auth/context.js';
-import { assertCan, canPerform } from '../auth/rbac.js';
+import { assertCan, canPerform, memberCan } from '../auth/rbac.js';
 import { httpError } from '../http/errors.js';
 import { audit, staffAudit } from '../domain/clinicEvents.js';
 import type { ClinicRepository, HmoInsurance } from '../repositories/ClinicRepository.js';
@@ -26,7 +26,7 @@ export function registerHmoRoutes(app: FastifyInstance, repo: ClinicRepository):
   // Delete HMO (via POST for browser compatibility)
   app.post('/api/hmo/:id/delete', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'view_patients')) throw httpError('FORBIDDEN', 403);
+    if (!memberCan(auth.member, 'view_patients')) throw httpError('FORBIDDEN', 403);
     const params = z.object({ id: z.string() }).parse(request.params);
     const ins = await repo.getHmoInsurance(params.id);
     if (!ins || ins.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
@@ -35,7 +35,7 @@ export function registerHmoRoutes(app: FastifyInstance, repo: ClinicRepository):
   });
   app.delete('/api/hmo/:id', async (request) => {
     const auth = await requireAuth(request, repo);
-    if (!canPerform(auth.member.role, 'view_patients')) throw httpError('FORBIDDEN', 403);
+    if (!memberCan(auth.member, 'view_patients')) throw httpError('FORBIDDEN', 403);
     const params = z.object({ id: z.string() }).parse(request.params);
     const ins = await repo.getHmoInsurance(params.id);
     if (!ins || ins.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
@@ -45,7 +45,7 @@ export function registerHmoRoutes(app: FastifyInstance, repo: ClinicRepository):
 
   app.post('/api/hmo', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member, 'manage_billing');
     const input = z.object({
       patientId: z.string(),
       hmoName: z.string().min(1),
@@ -62,7 +62,7 @@ export function registerHmoRoutes(app: FastifyInstance, repo: ClinicRepository):
   // Update HMO
   app.patch('/api/hmo/:id', async (request) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member.role, 'manage_billing');
+    assertCan(auth.member, 'manage_billing');
     const params = z.object({ id: z.string() }).parse(request.params);
     const patch = z.object({
       hmoName: z.string().min(1).optional(),

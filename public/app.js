@@ -69,11 +69,19 @@ const ROLE_PERMS = {
   viewer:  ['view_patients','view_reports'],
 };
 let currentRole = null;
+let currentRoles = [];
+function setSessionRoles(member) {
+  currentRole = member?.role || 'viewer';
+  currentRoles = Array.from(new Set([member?.role, ...(member?.additionalRoles || [])].filter(Boolean)));
+}
+function currentHasRole(role) { return currentRoles.includes(role); }
+// Full role set of a listed member (primary + additional).
+function mRoles(m) { return Array.from(new Set([m.role, ...(m.additionalRoles || [])])); }
 
 function can(perm) {
   // Fail closed: before the session role is known, grant nothing.
-  if (!currentRole) return false;
-  return ROLE_PERMS[currentRole]?.includes(perm) ?? false;
+  if (!currentRoles.length) return false;
+  return currentRoles.some((r) => ROLE_PERMS[r]?.includes(perm) ?? false);
 }
 
 function applyRBAC(force) {
@@ -425,6 +433,7 @@ function clearSession() {
   patientAccounts = [];
   sessionMode = 'staff';
   currentRole = null;
+  currentRoles = [];
   window.clinicToken = '';
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TENANT_KEY);
@@ -662,7 +671,7 @@ function render() {
   ).join('');
 
   const branchOptions = snapshot.branches.map((branch) => option(branch.id, branch.name)).join('');
-    const doctorOptions = snapshot.members.filter((member) => member.role === 'doctor').map((member) => option(member.id, member.displayName || member.email)).join('');
+    const doctorOptions = snapshot.members.filter((member) => mRoles(member).includes('doctor')).map((member) => option(member.id, member.displayName || member.email)).join('');
     const apptOptions = `<option value="">None</option>` + snapshot.appointments.map((item) => option(item.id, item.serviceName)).join('');
     const encounterOptions = `<option value="">No encounter</option>` + snapshot.encounters.map((item) => option(item.id, item.reason || item.id)).join('');
     document.querySelector('#appointment-form [name=branchId]').innerHTML = branchOptions;
@@ -678,7 +687,7 @@ function render() {
     document.querySelector('#encounter-form [name=branchId]').innerHTML = branchOptions;
     document.querySelector('#encounter-form [name=appointmentId]').innerHTML = apptOptions;
     document.querySelector('#encounter-form [name=doctorMemberId]').innerHTML = `<option value="">Unassigned</option>${doctorOptions}`;
-    const isDoctorRole = currentRole === 'doctor' || currentRole === 'radiologist' || currentRole === 'therapist' || currentRole === 'lab_technician';
+    const isDoctorRole = ['doctor','radiologist','therapist','lab_technician'].some((r) => currentRoles.includes(r));
     const doctorSelect = document.querySelector('#encounter-form [name=doctorMemberId]');
     if (doctorSelect) {
       doctorSelect.closest('label').hidden = isDoctorRole;
@@ -1015,7 +1024,7 @@ async function loadFromToken() {
   }
   const body = await response.json();
   tenantId = body.tenant.id;
-  currentRole = body.member?.role || 'viewer';
+  setSessionRoles(body.member);
   currentMemberId = body.member?.id || '';
   localStorage.setItem(TENANT_KEY, tenantId);
   setSession(token, tenantId, 'staff');
@@ -1175,7 +1184,7 @@ loginForm.addEventListener('submit', async (event) => {
     showSuperAdmin();
     return;
   }
-  currentRole = body.member?.role || 'viewer';
+  setSessionRoles(body.member);
   currentMemberId = body.member?.id || '';
   setSession(body.token, body.tenant.id, 'staff');
   applyRBAC();
@@ -1204,7 +1213,7 @@ registerForm.addEventListener('submit', async (event) => {
     if (el) { el.textContent = body.error || 'Registration failed'; el.hidden = false; }
     return;
   }
-  currentRole = body.member?.role || 'viewer';
+  setSessionRoles(body.member);
   currentMemberId = body.member?.id || '';
   setSession(body.token, body.tenant.id, 'staff');
   applyRBAC();
@@ -1228,7 +1237,7 @@ document.querySelector('#tenant-login-form')?.addEventListener('submit', async (
     showTenantError(body.error || 'Login failed');
     return;
   }
-  currentRole = body.member?.role || 'viewer';
+  setSessionRoles(body.member);
   currentMemberId = body.member?.id || '';
   setSession(body.token, body.tenant.id, 'staff');
   applyRBAC();
@@ -1430,7 +1439,7 @@ seed?.addEventListener('click', async () => {
   const response = await fetch('/api/demo/celon', { method: 'POST' });
   const body = await response.json();
   snapshot = body.snapshot;
-  currentRole = 'owner';
+  currentRole = 'owner'; currentRoles = ['owner'];
   currentMemberId = (snapshot.members || []).find(m => m.role === 'owner')?.id || '';
   setSession(body.token, snapshot.tenant.id, 'staff');
   applyRBAC();
@@ -1537,6 +1546,8 @@ document.querySelector('#member-form').addEventListener('submit', async (event) 
   event.preventDefault();
   const form = event.target;
   const data = Object.fromEntries(new FormData(form));
+  const addSel = form.querySelector('[name="additionalRoles"]');
+  if (addSel) data.additionalRoles = Array.from(addSel.selectedOptions).map((o) => o.value);
   const editId = form.dataset.editId;
   if (editId) {
     // Only send password if it was filled
@@ -1678,7 +1689,7 @@ document.querySelector('#encounter-form').addEventListener('submit', async (even
   event.preventDefault();
   const data = formDataWithAc(event.target);
   // Auto-assign doctor: if current user is a doctor/radiologist, use their member ID; otherwise use dropdown selection
-  const isDoctorRole = currentRole === 'doctor' || currentRole === 'radiologist' || currentRole === 'therapist' || currentRole === 'lab_technician';
+  const isDoctorRole = ['doctor','radiologist','therapist','lab_technician'].some((r) => currentRoles.includes(r));
   const doctorMemberId = isDoctorRole ? currentMemberId : (data.doctorMemberId || undefined);
   const specialistPayload = buildSpecialistPayload();
   await submitOrQueue(event.target, {
@@ -2289,6 +2300,11 @@ window.editMember = function(id) {
   if (roleEl) roleEl.value = member.role || '';
   var specEl = form.querySelector('[name="specialization"]');
   if (specEl && member.specialization) specEl.value = member.specialization;
+  var addSel = form.querySelector('[name="additionalRoles"]');
+  if (addSel) {
+    var extras = member.additionalRoles || [];
+    Array.prototype.forEach.call(addSel.options, function (op) { op.selected = extras.includes(op.value); });
+  }
   form.dataset.editId = member.id;
   var btn = form.querySelector('#staff-submit-btn');
   if (btn) btn.textContent = 'Update Staff';
@@ -3220,7 +3236,7 @@ async function populateStaffSelects() {
   const refDocSel = document.querySelector('#referral-form [name="toDoctorMemberId"]');
   if (refDocSel && snapshot) {
     refDocSel.innerHTML = '<option value="">Select specialist doctor...</option>' + (snapshot.members || [])
-      .filter(m => m.role === 'doctor' && m.status === 'active')
+      .filter(m => mRoles(m).includes('doctor') && m.status === 'active')
       .map(m => `<option value="${m.id}">${m.displayName || m.email}${m.specialization ? ' (' + m.specialization + ')' : ''}</option>`).join('');
   }
 }

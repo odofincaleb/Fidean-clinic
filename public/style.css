@@ -786,6 +786,16 @@ button { border: 0; cursor: pointer; }
 
 .patient-search { margin-bottom: 14px; }
 
+/* Patients filter row — wraps so the search drops to its own full-width line on mobile. */
+.patients-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.patients-filter-label { font-size: .85rem; font-weight: 600; white-space: nowrap; }
+.patients-filter > select { padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: .85rem; flex: 0 0 180px; }
+.patients-filter .patient-search { flex: 1 1 220px; min-width: 200px; margin-bottom: 0; }
+@media (max-width: 640px) {
+  .patients-filter .patient-search { flex: 1 1 100%; order: 3; min-width: 0; }
+  .patients-filter .patient-search input { width: 100%; box-sizing: border-box; }
+}
+
 /* ===== SETTINGS / REPORTS / TABLES ===== */
 .settings-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 760px; }
 .settings-form button { grid-column: 1 / -1; }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=52" />
+  <link rel="stylesheet" href="/style.css?v=53" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -297,12 +297,12 @@
       </section>
       <section class="panel tab-panel" id="patients">
         <h2>Patients</h2>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-          <label style="font-size:.85rem;font-weight:600;white-space:nowrap">Branch:</label>
-          <select id="patient-branch-filter" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:.85rem;flex:0 0 180px">
+        <div class="patients-filter">
+          <label class="patients-filter-label">Branch:</label>
+          <select id="patient-branch-filter">
             <option value="">All branches</option>
           </select>
-          <div class="patient-search" style="flex:1"><input id="patient-search-input" type="text" placeholder="Search patients by name, clinic ID, phone, code..." /></div>
+          <div class="patient-search"><input id="patient-search-input" type="text" placeholder="Search patients by name, clinic ID, phone, code..." /></div>
         </div>
         <div id="patient-list" class="cards"></div>
         <div id="patient-detail" class="detail-panel" hidden>

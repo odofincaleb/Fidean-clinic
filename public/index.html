@@ -874,9 +874,9 @@
         <button type="submit">Save SMTP settings</button>
       </form>
     </article>
-    <article class="card-rich">
+    <article class="card-rich" id="backup-card">
       <h3>💾 Data Backup</h3>
-      <p class="hint">Download your clinic data for record-keeping or migration. Exports all patients, appointments, encounters, invoices, and services.</p>
+      <p class="hint">Download your clinic data for record-keeping or migration. Owner only. Exports patients, appointments, encounters, invoices, prescriptions, services, HMOs, referrals, staff, schedules, inventory, documents and audit logs.</p>
       <div class="form" style="display:flex;gap:10px;margin-top:8px">
         <button type="button" id="export-json-btn" class="tab" style="background:var(--purple-soft);color:var(--purple-strong);border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:800">Download JSON</button>
         <button type="button" id="export-csv-btn" class="tab" style="background:var(--purple-soft);color:var(--purple-strong);border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:800">Download CSV</button>
@@ -971,7 +971,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=rbac-v26" type="module"></script>
+  <script src="/app.js?v=rbac-v27" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

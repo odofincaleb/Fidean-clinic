@@ -246,11 +246,23 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
     return { ok: true, token, tenantId: tenant.id, slug: tenant.slug };
   });
 
-  // Data backup: export all clinic data
+  // Data backup: export all clinic data. Owner / Super Admin only (Admin may NOT back up).
   app.get('/api/backup/json', async (request) => {
     const auth = await requireAuth(request, repo);
+    if (!hasRole(auth.member, 'owner') && auth.member.role !== 'super_admin') {
+      throw httpError('FORBIDDEN', 403);
+    }
     const tenantId = auth.tenantId;
-    const [patients, appointments, encounters, invoices, services, branches, members, prescriptions] = await Promise.all([
+    if (!tenantId) {
+      // Super admin with no tenant: nothing to export.
+      return { ok: true, exportedAt: new Date().toISOString(), tenantId: '', data: {} };
+    }
+    const [
+      patients, appointments, encounters, invoices, services, branches, members, prescriptions,
+      hmoInsurances, doctorSchedules, referrals, patientDocuments, patientAccounts,
+      inventoryItems, inventoryMovements, inventoryBatches, suppliers,
+      notificationJobs, auditLogs, settings,
+    ] = await Promise.all([
       repo.listPatients(tenantId),
       repo.listAppointments(tenantId),
       repo.listEncounters(tenantId),
@@ -259,12 +271,29 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
       repo.listBranches(tenantId),
       repo.listMembers(tenantId),
       repo.listPrescriptions(tenantId),
+      repo.listHmoInsurances(tenantId),
+      repo.listDoctorSchedules(tenantId),
+      repo.listReferrals(tenantId),
+      repo.listPatientDocuments(tenantId),
+      repo.listPatientAccounts(tenantId),
+      repo.listInventoryItems(tenantId),
+      repo.listInventoryMovements(tenantId),
+      repo.listInventoryBatches(tenantId),
+      repo.listSuppliers(tenantId),
+      repo.listNotificationJobs(tenantId),
+      repo.listAuditLogs(tenantId),
+      repo.getSettings(tenantId),
     ]);
     return {
       ok: true,
       exportedAt: new Date().toISOString(),
       tenantId,
-      data: { patients, appointments, encounters, invoices, services, branches, members, prescriptions },
+      data: {
+        patients, appointments, encounters, invoices, services, branches, members, prescriptions,
+        hmoInsurances, doctorSchedules, referrals, patientDocuments, patientAccounts,
+        inventoryItems, inventoryMovements, inventoryBatches, suppliers,
+        notificationJobs, auditLogs, settings,
+      },
     };
   });
 

@@ -107,6 +107,9 @@ function applyRBAC(force) {
   h('#schedule-form', 'manage_appointments');
   h('#service-form', 'manage_services');
   h('#notification-filter', 'manage_appointments');
+  // Data backup is Owner / Super Admin only (never Admin or below).
+  const backupCard = document.querySelector('#backup-card');
+  if (backupCard) backupCard.hidden = !(currentHasRole('owner') || currentRole === 'super_admin');
   // Admin tabs
   const setTab = document.querySelector('.sidebar-item[data-tab="settings"]');
   if (setTab) setTab.hidden = !can('manage_staff');
@@ -3481,7 +3484,7 @@ async function exportData(format) {
     } else {
       downloadBlob(JSON.stringify(body.data, null, 2), `clinic-backup-${new Date().toISOString().slice(0,10)}.json`, 'application/json');
     }
-    result.textContent = `✅ Exported ${(body.data.patients || []).length} patients, ${(body.data.appointments || []).length} appointments`;
+    result.textContent = `✅ Exported ${(body.data.patients || []).length} patients, ${(body.data.appointments || []).length} appointments, ${(body.data.encounters || []).length} encounters, ${(body.data.invoices || []).length} invoices, ${(body.data.services || []).length} services, ${(body.data.members || []).length} staff, ${(body.data.hmoInsurances || []).length} HMOs, ${(body.data.referrals || []).length} referrals`;
   } catch (e) {
     result.textContent = `❌ ${e.message}`;
   }

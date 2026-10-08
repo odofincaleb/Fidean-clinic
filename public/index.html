@@ -383,6 +383,7 @@
           <label>Qualifications <input name="qualifications" placeholder="e.g. MBBS, MD" /></label>
           <label>Password <input name="password" type="password" placeholder="Min 8 chars" /><small id="staff-pw-hint" style="display:block;color:var(--text-tertiary);font-size:11px;margin-top:2px">Leave blank to send invite email instead</small></label>
           <label>License # <input name="licenseNumber" placeholder="License number" /></label>
+          <label>Specialist Tag <input name="specialistTag" placeholder="e.g. Therapist, Hygienist, Surgeon" /><small style="display:block;color:var(--text-tertiary);font-size:11px;margin-top:2px">Any specialist label — makes them bookable like a Doctor (e.g. Therapist)</small></label>
           <div class="full-row">
             <button type="submit" id="staff-submit-btn">Create Staff</button>
             <button type="button" id="staff-reset-pw" style="display:none;background:var(--warning);color:#fff">Reset password</button>
@@ -970,7 +971,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=rbac-v25" type="module"></script>
+  <script src="/app.js?v=rbac-v26" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

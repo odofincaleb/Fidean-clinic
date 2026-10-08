@@ -52,6 +52,7 @@ export interface Member {
   specialization?: string;
   qualifications?: string;
   licenseNumber?: string;
+  specialistTag?: string;
   createdAt: string;
 }
 
@@ -63,6 +64,19 @@ export function memberRoles(m: Member): Role[] {
 /** True when the member holds the given role (primary or additional). */
 export function hasRole(m: Member, role: Role): boolean {
   return memberRoles(m).includes(role);
+}
+
+/** A specialist is bookable as a doctor: holds the doctor role OR carries a specialist tag. */
+export function isBookableDoctor(m: Member): boolean {
+  return hasRole(m, 'doctor') || !!(m.specialistTag ?? '').trim();
+}
+
+/** Display label: use the specialist tag if set, else fall back to "Doctor" / role name. */
+export function specialistTagOf(m: Member): string {
+  const t = (m.specialistTag ?? '').trim();
+  if (t) return t;
+  if (hasRole(m, 'doctor')) return 'Doctor';
+  return m.role.charAt(0).toUpperCase() + m.role.slice(1).replace('_', ' ');
 }
 
 export interface Patient {

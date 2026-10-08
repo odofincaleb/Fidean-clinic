@@ -54,6 +54,7 @@ export interface MemberInput {
   specialization?: string;
   qualifications?: string;
   licenseNumber?: string;
+  specialistTag?: string;
 }
 
 export interface PatientInput {
@@ -248,10 +249,10 @@ export interface ClinicRepository {
 
   listMembers(tenantId: string): Promise<Member[]>;
   getMember(memberId: string): Promise<Member | undefined>;
-  updateMember(memberId: string, patch: Partial<Pick<Member, 'displayName' | 'role' | 'additionalRoles' | 'phone' | 'specialization'>>): Promise<Member>;
+  updateMember(memberId: string, patch: Partial<Pick<Member, 'displayName' | 'role' | 'additionalRoles' | 'phone' | 'specialization' | 'specialistTag'>>): Promise<Member>;
   deleteMember(memberId: string): Promise<void>;
   addMember(input: MemberInput): Promise<Member>;
-  updateMember(memberId: string, patch: Partial<Pick<Member, 'displayName' | 'role' | 'additionalRoles' | 'branchIds' | 'status' | 'phone' | 'specialization' | 'qualifications' | 'licenseNumber'>>): Promise<Member>;
+  updateMember(memberId: string, patch: Partial<Pick<Member, 'displayName' | 'role' | 'additionalRoles' | 'branchIds' | 'status' | 'phone' | 'specialization' | 'qualifications' | 'licenseNumber' | 'specialistTag'>>): Promise<Member>;
 
   listPatients(tenantId: string): Promise<Patient[]>;
   getPatient(patientId: string): Promise<Patient | undefined>;

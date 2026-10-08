@@ -77,6 +77,9 @@ function setSessionRoles(member) {
 function currentHasRole(role) { return currentRoles.includes(role); }
 // Full role set of a listed member (primary + additional).
 function mRoles(m) { return Array.from(new Set([m.role, ...(m.additionalRoles || [])])); }
+// A specialist is bookable as a doctor: holds the doctor role OR carries a specialist tag.
+function isBookableDoc(m) { return mRoles(m).includes('doctor') || !!(m.specialistTag || '').trim(); }
+function docLabel(m) { return (m.displayName || m.email) + ((m.specialistTag || '').trim() ? ' (' + m.specialistTag.trim() + ')' : ''); }
 
 function can(perm) {
   // Fail closed: before the session role is known, grant nothing.
@@ -625,7 +628,7 @@ function render() {
     const actions = canManageStaff
       ? `<div class="card-actions"><button data-edit-member="${member.id}" style="font-size:.78rem;padding:4px 10px" onclick="editMember('${member.id}')">Edit</button>${deletable ? `<button data-delete-member="${member.id}" style="font-size:.78rem;padding:4px 10px;background:var(--danger)" onclick="deleteMember('${member.id}')">Delete</button>` : ''}</div>`
       : '';
-    return `<article class="card-rich card-clickable" data-member-id="${member.id}"><h3>${member.displayName || member.email}</h3><p class="card-meta"><span class="badge badge-${member.status}">${member.status}</span> <span class="badge badge-${member.role}">${member.role}</span></p><div class="card-details">${member.email ? `<span>✉ ${member.email}</span>` : ''}${member.phone ? `<span>📞 ${member.phone}</span>` : ''}${member.specialization ? `<span>🔬 ${member.specialization}</span>` : ''}</div>${actions}</article>`;
+    return `<article class="card-rich card-clickable" data-member-id="${member.id}"><h3>${member.displayName || member.email}</h3><p class="card-meta"><span class="badge badge-${member.status}">${member.status}</span> <span class="badge badge-${member.role}" title="${member.role}">${member.specialistTag || member.role}</span></p><div class="card-details">${member.email ? `<span>✉ ${member.email}</span>` : ''}${member.phone ? `<span>📞 ${member.phone}</span>` : ''}${member.specialization ? `<span>🔬 ${member.specialization}</span>` : ''}</div>${actions}</article>`;
   }).join('');
 
   document.querySelector('#service-list').innerHTML = snapshot.services.map((service) =>
@@ -671,7 +674,7 @@ function render() {
   ).join('');
 
   const branchOptions = snapshot.branches.map((branch) => option(branch.id, branch.name)).join('');
-    const doctorOptions = snapshot.members.filter((member) => mRoles(member).includes('doctor')).map((member) => option(member.id, member.displayName || member.email)).join('');
+    const doctorOptions = snapshot.members.filter((member) => isBookableDoc(member)).map((member) => option(member.id, docLabel(member))).join('');
     const apptOptions = `<option value="">None</option>` + snapshot.appointments.map((item) => option(item.id, item.serviceName)).join('');
     const encounterOptions = `<option value="">No encounter</option>` + snapshot.encounters.map((item) => option(item.id, item.reason || item.id)).join('');
     document.querySelector('#appointment-form [name=branchId]').innerHTML = branchOptions;
@@ -2300,6 +2303,8 @@ window.editMember = function(id) {
   if (roleEl) roleEl.value = member.role || '';
   var specEl = form.querySelector('[name="specialization"]');
   if (specEl && member.specialization) specEl.value = member.specialization;
+  var tagEl = form.querySelector('[name="specialistTag"]');
+  if (tagEl) tagEl.value = member.specialistTag || '';
   var addSel = form.querySelector('[name="additionalRoles"]');
   if (addSel) {
     var extras = member.additionalRoles || [];
@@ -3236,8 +3241,8 @@ async function populateStaffSelects() {
   const refDocSel = document.querySelector('#referral-form [name="toDoctorMemberId"]');
   if (refDocSel && snapshot) {
     refDocSel.innerHTML = '<option value="">Select specialist doctor...</option>' + (snapshot.members || [])
-      .filter(m => mRoles(m).includes('doctor') && m.status === 'active')
-      .map(m => `<option value="${m.id}">${m.displayName || m.email}${m.specialization ? ' (' + m.specialization + ')' : ''}</option>`).join('');
+      .filter(m => isBookableDoc(m) && m.status === 'active')
+      .map(m => `<option value="${m.id}">${docLabel(m)}${m.specialization ? ' (' + m.specialization + ')' : ''}</option>`).join('');
   }
 }
 // Call from render() after snapshot renders

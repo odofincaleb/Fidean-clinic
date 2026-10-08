@@ -116,6 +116,7 @@ function mapMember(row: pg.QueryResultRow): Member {
     specialization: row.specialization ?? undefined,
     qualifications: row.qualifications ?? undefined,
     licenseNumber: row.license_number ?? undefined,
+    specialistTag: row.specialist_tag ?? undefined,
     status: row.status,
     createdAt: iso(row.created_at),
   };
@@ -627,9 +628,9 @@ export class PostgresClinicRepository implements ClinicRepository {
     const tenant = await this.getTenant(input.tenantId);
     if (!tenant) throw notFound('TENANT_NOT_FOUND');
     const result = await this.pool.query(
-      `INSERT INTO tenant_memberships (tenant_id, email, role, additional_roles, branch_ids, status, display_name, phone, specialization, qualifications, license_number)
-       VALUES ($1, $2, $3, $4::clinic_role[], $5::uuid[], $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [input.tenantId, input.email.toLowerCase(), input.role, input.additionalRoles ?? [], input.branchIds ?? [], 'active', input.displayName ?? null, input.phone ?? null, input.specialization ?? null, input.qualifications ?? null, input.licenseNumber ?? null],
+      `INSERT INTO tenant_memberships (tenant_id, email, role, additional_roles, branch_ids, status, display_name, phone, specialization, qualifications, license_number, specialist_tag)
+       VALUES ($1, $2, $3, $4::clinic_role[], $5::uuid[], $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [input.tenantId, input.email.toLowerCase(), input.role, input.additionalRoles ?? [], input.branchIds ?? [], 'active', input.displayName ?? null, input.phone ?? null, input.specialization ?? null, input.qualifications ?? null, input.licenseNumber ?? null, input.specialistTag ?? null],
     );
     return mapMember(result.rows[0]);
   }
@@ -639,9 +640,9 @@ export class PostgresClinicRepository implements ClinicRepository {
     if (!current) throw notFound('MEMBER_NOT_FOUND');
     const result = await this.pool.query(
       `UPDATE tenant_memberships
-       SET display_name = $2, role = $3, additional_roles = $4::clinic_role[], branch_ids = $5::uuid[], status = $6, phone = $7, specialization = $8, qualifications = $9, license_number = $10
+       SET display_name = $2, role = $3, additional_roles = $4::clinic_role[], branch_ids = $5::uuid[], status = $6, phone = $7, specialization = $8, qualifications = $9, license_number = $10, specialist_tag = $11
        WHERE id = $1 RETURNING *`,
-      [memberId, patch.displayName ?? current.displayName ?? null, patch.role ?? current.role, patch.additionalRoles ?? current.additionalRoles ?? [], patch.branchIds ?? current.branchIds, patch.status ?? current.status, patch.phone ?? current.phone ?? null, patch.specialization ?? current.specialization ?? null, patch.qualifications ?? current.qualifications ?? null, patch.licenseNumber ?? current.licenseNumber ?? null],
+      [memberId, patch.displayName ?? current.displayName ?? null, patch.role ?? current.role, patch.additionalRoles ?? current.additionalRoles ?? [], patch.branchIds ?? current.branchIds, patch.status ?? current.status, patch.phone ?? current.phone ?? null, patch.specialization ?? current.specialization ?? null, patch.qualifications ?? current.qualifications ?? null, patch.licenseNumber ?? current.licenseNumber ?? null, patch.specialistTag ?? current.specialistTag ?? null],
     );
     return mapMember(result.rows[0]);
   }

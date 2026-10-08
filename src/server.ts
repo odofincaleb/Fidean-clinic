@@ -62,6 +62,7 @@ const memberInput = z.object({
   specialization: z.string().optional(),
   qualifications: z.string().optional(),
   licenseNumber: z.string().optional(),
+  specialistTag: z.string().optional(),
 });
 const memberPatch = z.object({
   displayName: z.string().optional(),
@@ -73,6 +74,7 @@ const memberPatch = z.object({
   specialization: z.string().optional(),
   qualifications: z.string().optional(),
   licenseNumber: z.string().optional(),
+  specialistTag: z.string().optional(),
 });
 const patientInput = z.object({ tenantId: z.string().min(1), branchId: z.string().optional(), clinicPatientId: z.string().optional(), firstName: z.string().min(1), lastName: z.string().optional(), phone: z.string().optional(), email: z.string().email().optional(), altPhone: z.string().optional(), dob: z.string().optional(), gender: z.string().optional(), bloodGroup: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), medicalHistory: z.string().optional() });
 const patientPatch = z.object({ branchId: z.string().optional(), clinicPatientId: z.string().optional(), firstName: z.string().min(1).optional(), lastName: z.string().optional(), phone: z.string().min(5).optional(), email: z.string().email().optional(), altPhone: z.string().optional(), dob: z.string().optional(), gender: z.string().optional(), bloodGroup: z.string().optional(), address: z.string().optional(), city: z.string().optional(), state: z.string().optional(), medicalHistory: z.string().optional() });

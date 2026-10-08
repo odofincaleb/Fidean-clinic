@@ -34,6 +34,7 @@ const inviteInput = z.object({
   specialization: z.string().optional(),
   qualifications: z.string().optional(),
   licenseNumber: z.string().optional(),
+  specialistTag: z.string().optional(),
   password: z.string().min(8).optional(),
 });
 
@@ -121,7 +122,7 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
     const auth = await requireAuth(request, repo);
     assertCan(auth.member, 'manage_staff');
     const p = z.object({ id: z.string() }).parse(request.params);
-    const patch = z.object({ displayName: z.string().optional(), role: z.string().optional(), additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'store_manager', 'viewer'])).optional(), phone: z.string().optional(), specialization: z.string().optional(), qualifications: z.string().optional(), licenseNumber: z.string().optional(), password: z.string().min(8).optional() }).parse(request.body);
+    const patch = z.object({ displayName: z.string().optional(), role: z.string().optional(), additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'store_manager', 'viewer'])).optional(), phone: z.string().optional(), specialization: z.string().optional(), qualifications: z.string().optional(), licenseNumber: z.string().optional(), specialistTag: z.string().optional(), password: z.string().min(8).optional() }).parse(request.body);
     const member = await repo.getMember(p.id);
     if (!member || member.tenantId !== auth.tenantId) throw httpError('NOT_FOUND', 404);
     // Guard the owner account: a member may not demote their own owner seat.

@@ -184,6 +184,7 @@ export class MemoryClinicRepository implements ClinicRepository {
       specialization: input.specialization,
       qualifications: input.qualifications,
       licenseNumber: input.licenseNumber,
+      specialistTag: input.specialistTag,
       status: 'active',
       createdAt: now(),
     };
@@ -191,7 +192,7 @@ export class MemoryClinicRepository implements ClinicRepository {
     return member;
   }
 
-  async updateMember(memberId: string, patch: Partial<Pick<Member, 'displayName' | 'role' | 'additionalRoles' | 'branchIds' | 'status' | 'phone' | 'specialization' | 'qualifications' | 'licenseNumber'>>): Promise<Member> {
+  async updateMember(memberId: string, patch: Partial<Pick<Member, 'displayName' | 'role' | 'additionalRoles' | 'branchIds' | 'status' | 'phone' | 'specialization' | 'qualifications' | 'licenseNumber' | 'specialistTag'>>): Promise<Member> {
     const member = requireEntity(this.members.get(memberId), 'MEMBER_NOT_FOUND');
     const next = { ...member, ...patch };
     this.members.set(memberId, next);

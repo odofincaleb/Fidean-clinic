@@ -387,6 +387,30 @@ export class MemoryClinicRepository implements ClinicRepository {
     if (user) this.users.set(userId, { ...user, passwordHash });
   }
 
+  async findUserByPasswordResetTokenHash(tokenHash: string): Promise<AuthUser | undefined> {
+    return [...this.users.values()].find((user) => user.resetTokenHash === tokenHash);
+  }
+
+  async setUserPasswordReset(userId: string, tokenHash: string, expiresAt: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) this.users.set(userId, {
+      ...user,
+      resetTokenHash: tokenHash,
+      resetTokenExpiresAt: expiresAt,
+      resetTokenUsedAt: undefined,
+    });
+  }
+
+  async clearUserPasswordReset(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) this.users.set(userId, {
+      ...user,
+      resetTokenHash: undefined,
+      resetTokenExpiresAt: undefined,
+      resetTokenUsedAt: new Date().toISOString(),
+    });
+  }
+
   async findActiveMembershipByUserId(userId: string): Promise<Member | undefined> {
     const membershipId = [...this.memberUserIds.entries()].find(([, id]) => id === userId)?.[0];
     if (!membershipId) return undefined;

@@ -232,6 +232,9 @@ export interface AuthUser {
   passwordHash: string;
   displayName?: string;
   isSuperAdmin?: boolean;
+  resetTokenHash?: string;
+  resetTokenExpiresAt?: string;
+  resetTokenUsedAt?: string;
 }
 
 export interface ClinicRepository {
@@ -285,6 +288,9 @@ export interface ClinicRepository {
   findUserByEmail(email: string): Promise<AuthUser | undefined>;
   createUser(input: { email: string; passwordHash: string; displayName?: string }): Promise<{ id: string; email: string }>;
   updateUserPassword(userId: string, passwordHash: string): Promise<void>;
+  findUserByPasswordResetTokenHash(tokenHash: string): Promise<AuthUser | undefined>;
+  setUserPasswordReset(userId: string, tokenHash: string, expiresAt: string): Promise<void>;
+  clearUserPasswordReset(userId: string): Promise<void>;
   findActiveMembershipByUserId(userId: string): Promise<Member | undefined>;
   findMembershipByEmail(tenantId: string, email: string): Promise<Member | undefined>;
   linkUserToMembership(membershipId: string, userId: string): Promise<void>;

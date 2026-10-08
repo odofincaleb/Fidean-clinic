@@ -5,7 +5,14 @@ import { requireAuth, signToken } from '../auth/context.js';
 import { assertCan } from '../auth/rbac.js';
 import { httpError } from '../http/errors.js';
 import { audit, staffAudit } from '../domain/clinicEvents.js';
+import { PASSWORD_RESET_TTL_MS, expiresAt, hashToken, newDevToken } from '../auth/tokens.js';
+import { sendEmail } from '../notifications/emailSender.js';
 import type { ClinicRepository } from '../repositories/ClinicRepository.js';
+
+// Where the "set a new password" page lives. Guests reach it from a reset link,
+// so it must be a stable public URL (not a tenant slug). Base chosen to match the
+// secure portal origin we stand the app up on.
+const RESET_BASE_URL = 'https://clinic.169.58.111.70.sslip.io';
 
 const registerInput = z.object({
   name: z.string().min(2),
@@ -115,6 +122,50 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
     if (!tenant) throw httpError('TENANT_NOT_FOUND', 404);
     const user = await repo.findUserByEmail(auth.member.email);
     return { ok: true, user: publicUser(user), member: auth.member, tenant };
+  });
+
+  // Forgot password: issue a one-time reset token and email a reset link.
+  // Always answers the same way whether or not the email is registered, so an
+  // attacker can never enumerate accounts (mirrors the patient reset flow).
+  app.post('/api/auth/forgot-password', async (request) => {
+    const input = z.object({ email: z.string().email() }).parse(request.body);
+    const generic = { ok: true, message: 'If that email is registered, a reset link has been sent.' };
+    const user = await repo.findUserByEmail(input.email.toLowerCase());
+    if (user) {
+      const token = newDevToken();
+      await repo.setUserPasswordReset(user.id, hashToken(token), expiresAt(PASSWORD_RESET_TTL_MS));
+      const member = await repo.findActiveMembershipByUserId(user.id);
+      if (member) {
+        const settings = await repo.getSettings(member.tenantId);
+        if (settings?.smtpHost) {
+          await sendEmail(
+            settings,
+            user.email,
+            'Reset your clinic portal password',
+            `Hello${member.displayName ? ' ' + member.displayName : ''},\n\n` +
+            `We received a request to reset your clinic portal password. Click the link below to choose a new one:\n\n` +
+            `${RESET_BASE_URL}/reset-password?token=${token}\n\n` +
+            `This link expires in 24 hours. If you did not request it, you can safely ignore this email.`,
+          );
+        }
+      }
+    }
+    return { ...generic };
+  });
+
+  // Complete a password reset: validate the one-time token, then set the new password.
+  app.post('/api/auth/reset-password', async (request) => {
+    const input = z.object({ token: z.string().min(8), password: z.string().min(8) }).parse(request.body);
+    const user = await repo.findUserByPasswordResetTokenHash(hashToken(input.token));
+    if (!user) throw httpError('INVALID_PASSWORD_RESET_TOKEN', 401);
+    if (user.resetTokenUsedAt) throw httpError('PASSWORD_RESET_TOKEN_USED', 409);
+    if (user.resetTokenExpiresAt && new Date(user.resetTokenExpiresAt).getTime() < Date.now()) {
+      throw httpError('PASSWORD_RESET_TOKEN_EXPIRED', 410);
+    }
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    await repo.updateUserPassword(user.id, passwordHash);
+    await repo.clearUserPasswordReset(user.id);
+    return { ok: true };
   });
 
   // Staff: update

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=53" />
+  <link rel="stylesheet" href="/style.css?v=54" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -37,6 +37,7 @@
         <form id="login-form" class="auth-form">
           <input name="email" type="email" placeholder="Email" required />
           <input name="password" type="password" placeholder="Password" required minlength="8" />
+          <button type="button" class="link-button forgot-open auth-alt-btn" style="margin-top:-4px">Forgot password?</button>
           <button type="submit">Login</button>
         </form>
         <p class="security-note" style="margin-top:16px">Protected pilot access</p>
@@ -56,6 +57,41 @@
           <input name="password" type="password" placeholder="Create password (min 8 chars)" required minlength="8" />
           <input name="confirm" type="password" placeholder="Confirm password" required />
           <button type="submit">Set password & activate</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Forgot password — email request -->
+    <section class="auth-page" id="forgot-view" hidden>
+      <div class="auth-card-centered">
+        <div class="brand-lockup" style="justify-content:center;margin-bottom:24px">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span style="font-size:1.2rem">Reset your password</span>
+        </div>
+        <p id="forgot-result" class="auth-error" hidden></p>
+        <form id="forgot-form" class="auth-form">
+          <input name="email" type="email" placeholder="Enter your email" required autofocus />
+          <button type="submit" id="forgot-submit">Send reset link</button>
+        </form>
+        <p class="hint" style="text-align:center;margin-top:12px">
+          <a href="/" id="forgot-back">Back to login</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- Set a new password — /reset-password?token=xxx -->
+    <section class="auth-page" id="set-password-view" hidden>
+      <div class="auth-card-centered">
+        <div class="brand-lockup" style="justify-content:center;margin-bottom:24px">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span style="font-size:1.2rem">Set a new password</span>
+        </div>
+        <p id="reset-password-error" class="auth-error" hidden></p>
+        <p id="reset-password-success" style="color:#16a34a;font-weight:700;display:none">✅ Password updated. Redirecting to login...</p>
+        <form id="reset-password-form" class="auth-form">
+          <input name="password" type="password" placeholder="New password (min 8 chars)" required minlength="8" />
+          <input name="confirm" type="password" placeholder="Confirm new password" required />
+          <button type="submit" id="reset-password-submit">Set password</button>
         </form>
       </div>
     </section>
@@ -107,6 +143,7 @@
         <form id="tenant-login-form" class="auth-form">
           <input name="email" type="email" placeholder="Staff email" required />
           <input name="password" type="password" placeholder="Password" required minlength="8" />
+          <button type="button" class="link-button forgot-open auth-alt-btn" style="margin-top:-4px">Forgot password?</button>
           <button type="submit">Login</button>
         </form>
         <form id="tenant-patient-login-form" class="auth-form" hidden>
@@ -971,7 +1008,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=rbac-v27" type="module"></script>
+  <script src="/app.js?v=rbac-v28" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

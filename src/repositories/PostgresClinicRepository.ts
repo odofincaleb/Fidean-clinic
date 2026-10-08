@@ -853,7 +853,7 @@ export class PostgresClinicRepository implements ClinicRepository {
   }
 
   async findUserByEmail(email: string): Promise<AuthUser | undefined> {
-    const result = await this.pool.query('SELECT id, email, password_hash, display_name, is_super_admin FROM users WHERE email = $1', [email.toLowerCase()]);
+    const result = await this.pool.query('SELECT id, email, password_hash, display_name, is_super_admin, password_reset_token_hash, password_reset_token_expires_at, password_reset_token_used_at FROM users WHERE email = $1', [email.toLowerCase()]);
     const row = result.rows[0];
     if (!row) return undefined;
     return {
@@ -862,7 +862,40 @@ export class PostgresClinicRepository implements ClinicRepository {
       passwordHash: row.password_hash,
       displayName: row.display_name ?? undefined,
       isSuperAdmin: row.is_super_admin ?? false,
+      resetTokenHash: row.password_reset_token_hash ?? undefined,
+      resetTokenExpiresAt: row.password_reset_token_expires_at ? iso(row.password_reset_token_expires_at) : undefined,
+      resetTokenUsedAt: row.password_reset_token_used_at ? iso(row.password_reset_token_used_at) : undefined,
     };
+  }
+
+  async findUserByPasswordResetTokenHash(tokenHash: string): Promise<AuthUser | undefined> {
+    const result = await this.pool.query('SELECT id, email, password_hash, display_name, is_super_admin, password_reset_token_hash, password_reset_token_expires_at, password_reset_token_used_at FROM users WHERE password_reset_token_hash = $1', [tokenHash]);
+    const row = result.rows[0];
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      email: String(row.email).toLowerCase(),
+      passwordHash: row.password_hash,
+      displayName: row.display_name ?? undefined,
+      isSuperAdmin: row.is_super_admin ?? false,
+      resetTokenHash: row.password_reset_token_hash ?? undefined,
+      resetTokenExpiresAt: row.password_reset_token_expires_at ? iso(row.password_reset_token_expires_at) : undefined,
+      resetTokenUsedAt: row.password_reset_token_used_at ? iso(row.password_reset_token_used_at) : undefined,
+    };
+  }
+
+  async setUserPasswordReset(userId: string, tokenHash: string, expiresAt: string): Promise<void> {
+    await this.pool.query(
+      'UPDATE users SET password_reset_token_hash = $2, password_reset_token_expires_at = $3, password_reset_token_used_at = NULL WHERE id = $1',
+      [userId, tokenHash, expiresAt],
+    );
+  }
+
+  async clearUserPasswordReset(userId: string): Promise<void> {
+    await this.pool.query(
+      'UPDATE users SET password_reset_token_hash = NULL, password_reset_token_used_at = now() WHERE id = $1',
+      [userId],
+    );
   }
 
   async createUser(input: { email: string; passwordHash: string; displayName?: string }): Promise<{ id: string; email: string }> {

@@ -1101,6 +1101,10 @@ function handleRoute() {
     showActivateView(params.get('token'));
     return;
   }
+  if (path === '/reset-password' && params.get('token')) {
+    showResetPasswordView(params.get('token'));
+    return;
+  }
   if (path === '/register') {
     showView('register-view');
     document.querySelector('#hero-view')?.classList.remove('hero');
@@ -1312,6 +1316,79 @@ document.querySelector('#activate-form')?.addEventListener('submit', async (even
     }, 2000);
   } catch (e) {
     el.textContent = 'Network error'; el.hidden = false;
+  }
+});
+
+/* ── Forgot / Reset password (staff portal) ── */
+let resetPasswordToken = null;
+
+function showResetPasswordView(token) {
+  resetPasswordToken = token;
+  ['super-admin-view', 'register-view', 'tenant-view', 'dashboard', 'patient-dashboard'].forEach(id => {
+    const el = document.querySelector(`#${id}`); if (el) el.hidden = true;
+  });
+  const view = document.querySelector('#set-password-view'); if (view) view.hidden = false;
+  const err = document.querySelector('#reset-password-error'); if (err) err.hidden = true;
+  const ok = document.querySelector('#reset-password-success'); if (ok) ok.style.display = 'none';
+}
+
+function showForgotView() {
+  ['super-admin-view', 'tenant-view', 'register-view', 'dashboard', 'patient-dashboard'].forEach(id => {
+    const el = document.querySelector(`#${id}`); if (el) el.hidden = true;
+  });
+  const view = document.querySelector('#forgot-view'); if (view) view.hidden = false;
+  const r = document.querySelector('#forgot-result');
+  if (r) { r.hidden = true; r.textContent = ''; r.style.color = ''; }
+  document.querySelector('#forgot-form')?.reset();
+}
+
+document.querySelectorAll('.forgot-open').forEach((btn) =>
+  btn.addEventListener('click', showForgotView));
+
+document.querySelector('#forgot-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const el = document.querySelector('#forgot-result');
+  const btn = document.querySelector('#forgot-submit');
+  const data = Object.fromEntries(new FormData(event.target));
+  if (!data.email) return;
+  if (btn) btn.disabled = true;
+  const generic = 'If that email is registered, a reset link has been sent.';
+  try {
+    const resp = await fetch('/api/auth/forgot-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: String(data.email).trim() }),
+    });
+    const body = await resp.json();
+    el.textContent = body?.message || generic;
+    el.style.color = '#16a34a'; el.hidden = false;
+  } catch {
+    el.textContent = generic; el.style.color = '#16a34a'; el.hidden = false;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+});
+
+document.querySelector('#reset-password-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const err = document.querySelector('#reset-password-error');
+  err.hidden = true;
+  const data = Object.fromEntries(new FormData(event.target));
+  if (data.password !== data.confirm) { err.textContent = 'Passwords do not match'; err.hidden = false; return; }
+  if (data.password.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.hidden = false; return; }
+  try {
+    const resp = await fetch('/api/auth/reset-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetPasswordToken, password: String(data.password) }),
+    });
+    const body = await resp.json();
+    if (!resp.ok) {
+      err.textContent = body?.error || 'That reset link is invalid or has expired.'; err.hidden = false; return;
+    }
+    document.querySelector('#reset-password-form').hidden = true;
+    document.querySelector('#reset-password-success').style.display = 'block';
+    setTimeout(() => { window.location.href = '/'; }, 2000);
+  } catch {
+    err.textContent = 'Network error'; err.hidden = false;
   }
 });
 

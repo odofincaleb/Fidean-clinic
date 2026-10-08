@@ -290,6 +290,11 @@ button { border: 0; cursor: pointer; }
   box-shadow: 0 10px 22px rgba(88,78,232,.22);
 }
 .auth-form { display: flex; flex-direction: column; gap: 13px; animation: rise .2s ease-out; }
+.auth-form button.link-button, .link-button {
+  background: none; border: none; color: #3c2dc4; font-weight: 700; cursor: pointer;
+  text-decoration: underline; padding: 0; min-height: 0; box-shadow: none;
+}
+.auth-alt-btn { align-self: flex-end; margin-bottom: 4px; font-size: .8rem; }
 .auth-form input,
 .form input,
 .form select,

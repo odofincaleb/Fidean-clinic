@@ -95,6 +95,13 @@ function mapBranch(row: pg.QueryResultRow): Branch {
   };
 }
 
+function toRoleArray(v: unknown): Role[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map(String) as Role[];
+  // Postgres returns custom enum arrays (clinic_role[]) as a string like "{doctor}".
+  return String(v).replace(/^\{|\}$/g, '').split(',').filter(Boolean) as Role[];
+}
+
 function mapMember(row: pg.QueryResultRow): Member {
   return {
     id: row.id,
@@ -103,7 +110,7 @@ function mapMember(row: pg.QueryResultRow): Member {
     email: String(row.email).toLowerCase(),
     displayName: row.display_name ?? undefined,
     role: row.role as Role,
-    additionalRoles: (row.additional_roles ?? []).map(String) as Role[],
+    additionalRoles: toRoleArray(row.additional_roles),
     branchIds: (row.branch_ids ?? []).map(String),
     phone: row.phone ?? undefined,
     specialization: row.specialization ?? undefined,

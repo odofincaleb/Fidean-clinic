@@ -575,6 +575,80 @@ button { border: 0; cursor: pointer; }
 .cancel-btn { background: #f1efff; color: var(--purple-strong); }
 .delete-btn { background: transparent; color: #e53e3e; margin-left: auto; box-shadow: none; }
 .edit-actions button { min-height: 36px; border-radius: 10px; font-weight: 900; padding: 8px 14px; }
+.inline-card-edit,
+.encounter-edit-grid,
+.schedule-edit-grid {
+  width: 100%;
+  max-width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+.inline-card-edit .edit-input,
+.encounter-edit-grid .edit-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.encounter-notes-input,
+.encounter-edit-actions,
+.inline-edit-actions { grid-column: 1 / -1; }
+.inline-edit-actions,
+.encounter-edit-actions {
+  position: sticky;
+  bottom: 8px;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  padding: 8px;
+  margin: 6px -2px -2px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(102,87,244,.12);
+  box-shadow: 0 10px 28px rgba(38,28,92,.12);
+}
+.inline-edit-actions button,
+.encounter-edit-actions button {
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+.inline-edit-actions .delete-btn,
+.encounter-edit-actions .delete-btn { margin-left: 0; }
+
+@media (max-width: 720px) {
+  .inline-card-edit,
+  .encounter-edit-grid,
+  .schedule-edit-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .card-rich.is-editing,
+  .panel article.card-rich.is-editing {
+    overflow: visible;
+    padding: 12px;
+  }
+  .inline-edit-actions,
+  .encounter-edit-actions {
+    grid-template-columns: 1fr 1fr;
+    bottom: 6px;
+    padding: 7px;
+  }
+  .inline-edit-actions .delete-btn,
+  .encounter-edit-actions .delete-btn {
+    grid-column: 1 / -1;
+    color: #c53030;
+    background: #fff5f5;
+    border: 1px solid rgba(229,62,62,.18);
+  }
+  .inline-edit-actions button,
+  .encounter-edit-actions button {
+    min-height: 42px;
+    padding: 9px 10px;
+    font-size: .78rem;
+  }
+}
 
 .patient-ac { display: grid; gap: 0; position: relative; }
 .ac-input { min-height: 42px; padding: 10px 14px; border: 1px solid rgba(102,87,244,.16); border-radius: 12px; background: #fff; font-family: inherit; font-size: .88rem; width: 100%; box-sizing: border-box; }

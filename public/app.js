@@ -2334,8 +2334,9 @@ function renderPatientSubTab(subtab, patient) {
 
 function escapeHtml(s) {
   if (!s) return '';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function esc(s) { return escapeHtml(s); }
 
 /* ── Staff detail view ── */
 function renderStaffDetail(memberId) {
@@ -2463,13 +2464,14 @@ document.addEventListener('click', async (e) => {
     if (!branch) return;
     const prev = branchCard.innerHTML;
     branchCard.dataset.prevHtml = prev;
-    branchCard.innerHTML = `<div class="edit-inline">
-      <input name="name" value="${escapeHtml(branch.name)}" placeholder="Branch name" class="edit-input[name="unitPrice"] />
-      <input name="address" value="${escapeHtml(branch.address || '')}" placeholder="Address" class="edit-input[name="unitPrice"] />
-      <div class="edit-actions">
-        <button data-save-branch="${branch.id}" class="save-btn">Save</button>
-        <button data-cancel-branch="${branch.id}" class="cancel-btn">Cancel</button>
-        <button data-delete-branch="${branch.id}" class="delete-btn">Delete</button>
+    branchCard.classList.add('is-editing');
+    branchCard.innerHTML = `<div class="edit-inline inline-card-edit">
+      <input name="name" value="${escapeHtml(branch.name)}" placeholder="Branch name" class="edit-input" />
+      <input name="address" value="${escapeHtml(branch.address || '')}" placeholder="Address" class="edit-input" />
+      <div class="edit-actions inline-edit-actions">
+        <button type="button" data-save-branch="${branch.id}" class="save-btn">Save</button>
+        <button type="button" data-cancel-branch="${branch.id}" class="cancel-btn">Cancel</button>
+        <button type="button" data-delete-branch="${branch.id}" class="delete-btn">Delete</button>
       </div>
     </div>`;
     return;
@@ -2491,6 +2493,7 @@ document.addEventListener('click', async (e) => {
   if (cancelBranch) {
     const card = cancelBranch.closest('[data-branch-id]');
     card.innerHTML = card.dataset.prevHtml || '';
+    card.classList.remove('is-editing');
     delete card.dataset.prevHtml;
     return;
   }
@@ -2513,15 +2516,16 @@ document.addEventListener('click', async (e) => {
     scheduleCard.dataset.prevHtml = prev;
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weekdayOpts = days.map((d, i) => `<option value="${i}" ${schedule.weekday === i ? 'selected' : ''}>${d}</option>`).join('');
-    scheduleCard.innerHTML = `<div class="edit-inline edit-grid">
+    scheduleCard.classList.add('is-editing');
+    scheduleCard.innerHTML = `<div class="edit-inline edit-grid inline-card-edit schedule-edit-grid">
       <select name="weekday" class="edit-input">${weekdayOpts}</select>
-      <input name="startsAt" type="time" value="${schedule.startsAt}" class="edit-input[name="unitPrice"] />
-      <input name="endsAt" type="time" value="${schedule.endsAt}" class="edit-input[name="unitPrice"] />
-      <input name="slotMinutes" type="number" value="${schedule.slotMinutes}" min="5" class="edit-input[name="unitPrice"] />
-      <div class="edit-actions">
-        <button data-save-schedule="${schedule.id}" class="save-btn">Save</button>
-        <button data-cancel-schedule="${schedule.id}" class="cancel-btn">Cancel</button>
-        <button data-delete-schedule="${schedule.id}" class="delete-btn">Delete</button>
+      <input name="startsAt" type="time" value="${schedule.startsAt}" class="edit-input" />
+      <input name="endsAt" type="time" value="${schedule.endsAt}" class="edit-input" />
+      <input name="slotMinutes" type="number" value="${schedule.slotMinutes}" min="5" class="edit-input" />
+      <div class="edit-actions inline-edit-actions">
+        <button type="button" data-save-schedule="${schedule.id}" class="save-btn">Save</button>
+        <button type="button" data-cancel-schedule="${schedule.id}" class="cancel-btn">Cancel</button>
+        <button type="button" data-delete-schedule="${schedule.id}" class="delete-btn">Delete</button>
       </div>
     </div>`;
     return;
@@ -2545,6 +2549,7 @@ document.addEventListener('click', async (e) => {
   if (cancelSchedule) {
     const card = cancelSchedule.closest('[data-schedule-id]');
     card.innerHTML = card.dataset.prevHtml || '';
+    card.classList.remove('is-editing');
     delete card.dataset.prevHtml;
     return;
   }
@@ -2565,16 +2570,17 @@ document.addEventListener('click', async (e) => {
     if (!enc) return;
     const prev = encounterCard.innerHTML;
     encounterCard.dataset.prevHtml = prev;
-    encounterCard.innerHTML = `<div class="edit-inline edit-grid">
-      <input name="reason" value="${escapeHtml(enc.reason || '')}" placeholder="Reason" class="edit-input[name="unitPrice"] />
-      <input name="diagnosis" value="${escapeHtml(enc.diagnosis || '')}" placeholder="Diagnosis" class="edit-input[name="unitPrice"] />
-      <input name="clinicalNotes" value="${escapeHtml(enc.clinicalNotes || '')}" placeholder="Clinical notes" class="edit-input[name="unitPrice"] />
-      <input name="bloodPressure" value="${escapeHtml(enc.bloodPressure || '')}" placeholder="BP" class="edit-input[name="unitPrice"] />
-      <input name="temperatureC" type="number" step="0.1" value="${enc.temperatureC || ''}" placeholder="Temp C" class="edit-input[name="unitPrice"] />
-      <div class="edit-actions">
-        <button data-save-encounter="${enc.id}" class="save-btn">Save</button>
-        <button data-cancel-encounter="${enc.id}" class="cancel-btn">Cancel</button>
-        <button data-delete-encounter="${enc.id}" class="delete-btn">Delete</button>
+    encounterCard.classList.add('is-editing');
+    encounterCard.innerHTML = `<div class="edit-inline edit-grid encounter-edit-grid" role="group" aria-label="Edit encounter">
+      <input name="reason" value="${escapeHtml(enc.reason || '')}" placeholder="Reason" class="edit-input" />
+      <input name="diagnosis" value="${escapeHtml(enc.diagnosis || '')}" placeholder="Diagnosis" class="edit-input" />
+      <input name="clinicalNotes" value="${escapeHtml(enc.clinicalNotes || '')}" placeholder="Clinical notes" class="edit-input encounter-notes-input" />
+      <input name="bloodPressure" value="${escapeHtml(enc.bloodPressure || '')}" placeholder="BP" class="edit-input" />
+      <input name="temperatureC" type="number" step="0.1" value="${enc.temperatureC || ''}" placeholder="Temp C" class="edit-input" />
+      <div class="edit-actions encounter-edit-actions">
+        <button type="button" data-save-encounter="${enc.id}" class="save-btn">Save</button>
+        <button type="button" data-cancel-encounter="${enc.id}" class="cancel-btn">Cancel</button>
+        <button type="button" data-delete-encounter="${enc.id}" class="delete-btn">Delete</button>
       </div>
     </div>`;
     return;
@@ -2597,6 +2603,7 @@ document.addEventListener('click', async (e) => {
   if (cancelEncounter) {
     const card = cancelEncounter.closest('[data-encounter-id]');
     card.innerHTML = card.dataset.prevHtml || '';
+    card.classList.remove('is-editing');
     delete card.dataset.prevHtml;
     return;
   }

@@ -10,6 +10,7 @@ import { requireAuth, signToken } from './auth/context.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerClinicalRoutes } from './routes/clinical.js';
 import { registerMessagesRoutes } from './routes/messages.js';
+import { registerBroadcastRoutes } from './routes/broadcast.js';
 import { registerPaymentsRoutes } from './routes/payments.js';
 import { registerWalletRoutes } from './routes/wallet.js';
 import { registerPortalRoutes } from './routes/portal.js';
@@ -191,6 +192,7 @@ app.register(cors, { origin: true, methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POS
   registerPaymentsRoutes(app, repo);
   registerWalletRoutes(app, repo);
   registerMessagesRoutes(app, repo);
+  registerBroadcastRoutes(app, repo);
   registerPortalRoutes(app, repo);
   registerSyncRoutes(app, repo);
   registerReferralsRoutes(app, repo);

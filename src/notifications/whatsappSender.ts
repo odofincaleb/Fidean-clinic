@@ -5,10 +5,11 @@
 // model — the token lives server-side only and is never exposed to clients.
 //
 // Approved templates (must be created in WhatsApp Business Manager):
-//   clinic_announcement_msg   → 1 body param: {{1}} = message text
-//   clinic_appointment_reminder → 2 body params: {{1}} = patient name, {{2}} = appointment datetime
-//   clinic_payment_receipt_msg  → 2 body params: {{1}} = patient name, {{2}} = amount
-//   clinic_health_tip_msg       → 1 body param: {{1}} = tip text
+// Verified param shapes from Meta (2026-10-13):
+//   clinic_announcement_msg   → 2 body params: {{1}} clinic name, {{2}} message text
+//   clinic_appointment_reminder → 2 body params: {{1}} clinic name, {{2}} appointment datetime
+//   clinic_payment_receipt_msg  → 3 body params: {{1}} amount, {{2}} clinic name, {{3}} receipt no
+//   clinic_health_tip_msg       → 2 body params: {{1}} clinic name, {{2}} tip text
 const WHATSAPP_PHONE_NUMBER_ID = '1302276219632807';
 const WHATSAPP_GRAPH_URL = `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
 

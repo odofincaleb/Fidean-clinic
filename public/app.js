@@ -3074,55 +3074,87 @@ document.querySelector('#broadcast-send-btn')?.addEventListener('click', async (
 
   const btn = document.querySelector('#broadcast-send-btn');
   btn.disabled = true;
-  btn.textContent = `Sending 0/${patients.length}...`;
+  btn.textContent = 'Preparing...';
   resultBox.innerHTML = '';
-  let sent = 0, failed = 0;
 
-  for (let i = 0; i < patients.length; i++) {
-    const p = patients[i];
-    try {
-      const payload = { channel, recipient: String(p.phone).trim(), body };
-      if (channel === 'whatsapp') {
-        payload.templateName = document.querySelector('#broadcast-template')?.value || 'clinic_announcement_msg';
-        // Build per-recipient template params (patient name auto-filled)
-        const paramValues = buildTemplateParams(p);
-        if (paramValues.some(v => v && String(v).trim())) payload.templateParams = paramValues;
-      }
-      const resp = await fetch('/api/messages/send', {
-        method: 'POST', headers: headers(),
-        body: JSON.stringify(payload),
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (resp.ok && data && data.ok) {
-        sent++;
-      } else {
-        failed++;
-        const err = data && data.error ? data.error : `HTTP ${resp.status}`;
-        const item = document.createElement('div');
-        item.className = 'card-rich';
-        item.style.borderLeft = '3px solid #f87171';
-        item.innerHTML = `<p><strong>${escapeHtml(p.firstName + ' ' + (p.lastName || ''))}</strong> <span style="float:right;color:#b91c1c">✗ ${escapeHtml(err)}</span></p><p style="font-size:.78rem;color:var(--text-tertiary)">${escapeHtml(String(p.phone))}</p>`;
-        resultBox.appendChild(item);
-      }
-    } catch (err) {
-      failed++;
-      const item = document.createElement('div');
-      item.className = 'card-rich';
-      item.style.borderLeft = '3px solid #f87171';
-      item.innerHTML = `<p><strong>${escapeHtml(p.firstName + ' ' + (p.lastName || ''))}</strong> <span style="float:right;color:#b91c1c">✗ ${escapeHtml(String(err && err.message || 'network'))}</span></p>`;
-      resultBox.appendChild(item);
+  // Build the recipient list once — the server dedupes, validates, paces the
+  // burst, and reports per-recipient results, so a 474-blast is safe and the
+  // run survives the tab closing.
+  const recipients = patients.map(p => ({
+    name: (String(p.firstName || '') + ' ' + String(p.lastName || '')).trim(),
+    phone: String(p.phone).trim(),
+    templateParams: channel === 'whatsapp' ? buildTemplateParams(p) : undefined,
+  }));
+
+  const payload = { channel, body, recipients };
+  if (channel === 'whatsapp') payload.templateName = document.querySelector('#broadcast-template')?.value || 'clinic_announcement_msg';
+
+  let resp, data = {};
+  try {
+    resp = await fetch('/api/messages/broadcast', { method: 'POST', headers: headers(), body: JSON.stringify(payload) });
+    data = await resp.json().catch(() => ({}));
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Send broadcast';
+    showError('Could not start the broadcast: ' + String((err && err.message) || 'network error'));
+    return;
+  }
+  if (!resp.ok || !data.ok) {
+    btn.disabled = false; btn.textContent = 'Send broadcast';
+    if (data.error === 'INSUFFICIENT_WALLET_BALANCE') {
+      const need = Number((data.totals || {}).totalCost || totalCost);
+      showError(`Insufficient wallet balance. Need ₦${need.toLocaleString()}, have ₦${(currentSettings?.walletBalance ?? 0).toLocaleString()}.`);
+    } else {
+      showError(data.error || `Could not start broadcast (HTTP ${resp.status}).`);
     }
-    btn.textContent = `Sending ${i + 1}/${patients.length}...`;
+    return;
+  }
+
+  const totals = data.totals || {};
+  if ((totals.dupesRemoved || 0) > 0 || (totals.invalid || 0) > 0) {
+    const note = document.createElement('div');
+    note.className = 'card-rich';
+    note.style.borderLeft = '3px solid #f59e0b';
+    note.innerHTML = `<p style="font-size:.8rem;color:var(--text-secondary)">Cleaned before sending: ${totals.invalid || 0} invalid number(s), ${totals.dupesRemoved || 0} duplicate(s). <strong>${totals.total} unique messages</strong> will go out.</p>`;
+    resultBox.appendChild(note);
+  }
+
+  const jobId = data.jobId;
+  let job = { status: 'running', sent: 0, failed: 0, skipped: 0, total: totals.total || patients.length, results: [] };
+
+  // Poll the job on the server until it finishes (survives tab closes).
+  while (job.status === 'running') {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const pr = await fetch(`/api/messages/broadcast/${jobId}`, { headers: headers() }).then(r => r.json()).catch(() => ({}));
+      if (pr && pr.job) job = pr.job;
+    } catch { /* keep polling */ }
+    btn.textContent = `Sending ${job.sent}/${(job.total || patients.length)}...`;
   }
 
   btn.disabled = false;
   btn.textContent = 'Send broadcast';
+
+  const sent = job.sent || 0;
+  const failed = job.failed || 0;
+  const skipped = job.skipped || 0;
+  const perMsg = broadcastCostPerMsg(channel);
   const summary = document.createElement('div');
   summary.className = 'card-rich';
-  summary.style.borderLeft = `3px solid ${failed ? '#f59e0b' : '#22c55e'}`;
-  summary.innerHTML = `<p><strong>Done.</strong> ${sent} sent ✅ ${failed ? '· ' + failed + ' failed ❌' : ''}</p>`;
+  summary.style.borderLeft = `3px solid ${(failed || skipped) ? '#f59e0b' : '#22c55e'}`;
+  summary.innerHTML =
+    `<p><strong>Done.</strong> ${sent} sent ✅${failed ? ` · ${failed} failed ❌` : ''}${skipped ? ` · ${skipped} skipped` : ''}</p>` +
+    `<p style="font-size:.78rem;color:var(--text-tertiary)">Cost: ₦${(sent * perMsg).toLocaleString()} · New balance ≈ ₦${Math.max(0, (currentSettings?.walletBalance ?? 0) - sent * perMsg).toLocaleString()}</p>`;
   resultBox.prepend(summary);
-  showSuccessToast(`Broadcast complete: ${sent} sent, ${failed} failed`);
+
+  // Only the failures — the ones that didn't land, with the reason.
+  (job.results || []).filter(r => !r.ok && r.status === 'failed').forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'card-rich';
+    item.style.borderLeft = '3px solid #f87171';
+    item.innerHTML = `<p><strong>${escapeHtml(r.name || r.phone)}</strong> <span style="float:right;color:#b91c1c">✗ ${escapeHtml(String(r.error || 'failed'))}</span></p><p style="font-size:.78rem;color:var(--text-tertiary)">${escapeHtml(r.phone)}</p>`;
+    resultBox.appendChild(item);
+  });
+  showSuccessToast(`Broadcast complete: ${sent} sent, ${failed} failed${skipped ? ', ' + skipped + ' skipped' : ''}`);
   await refresh();
 });
 

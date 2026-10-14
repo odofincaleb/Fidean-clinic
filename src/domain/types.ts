@@ -17,7 +17,8 @@ export type Permission =
   | 'manage_broadcast'
   | 'view_ledger'
   | 'view_audit_logs'
-  | 'manage_referrals';
+  | 'manage_referrals'
+  | 'manage_settings';
 
 export interface Tenant {
   id: string;

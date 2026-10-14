@@ -8,16 +8,15 @@ export function registerSettingsRoutes(app: FastifyInstance, repo: ClinicReposit
   app.get('/api/settings', async (request, reply) => {
     const auth = await requireAuth(request, repo);
     // Settings holds clinic branding, SMTP, Paystack keys and wallet config —
-    // restrict to staff who can manage staff (owner / admin / branch_manager),
-    // mirroring the sidebar gating. Not every authenticated staff member.
-    assertCan(auth.member, 'manage_staff');
+    // Owner and Admin only (manage_settings), not branch managers or below.
+    assertCan(auth.member, 'manage_settings');
     const settings = await repo.getSettings(auth.tenantId);
     return reply.send(settings || {});
   });
 
   app.put('/api/settings', async (request, reply) => {
     const auth = await requireAuth(request, repo);
-    assertCan(auth.member, 'manage_staff');
+    assertCan(auth.member, 'manage_settings');
     const body = request.body as Record<string, unknown>;
     const settings = await repo.upsertSettings(auth.tenantId, body);
     await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'settings_update', objectType: 'settings', objectId: auth.tenantId });

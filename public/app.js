@@ -58,8 +58,8 @@ const PATIENT_IMPORT_FIELDS = [
 const PATIENT_TEMPLATE_HEADERS = ['Existing Patient ID','First Name','Last Name','Phone','Email','Alternate Phone','Date of Birth','Gender','Blood Group','Address','City','State','Medical History'];
 
 const ROLE_PERMS = {
-  owner:   ['manage_staff','manage_branches','manage_services','manage_broadcast','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_subscription','manage_inventory','send_staff_messages','view_ledger','view_audit_logs','manage_referrals'],
-  admin:   ['manage_staff','manage_branches','manage_services','manage_broadcast','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_inventory','send_staff_messages','view_ledger','view_audit_logs','manage_referrals'],
+  owner:   ['manage_staff','manage_branches','manage_services','manage_broadcast','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_subscription','manage_inventory','send_staff_messages','view_ledger','view_audit_logs','manage_referrals','manage_settings'],
+  admin:   ['manage_staff','manage_branches','manage_services','manage_broadcast','manage_appointments','create_appointment','view_patients','write_encounter','manage_prescriptions','view_billing','manage_billing','view_reports','manage_inventory','send_staff_messages','view_ledger','view_audit_logs','manage_referrals','manage_settings'],
   branch_manager: ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','view_billing','manage_billing','view_reports','manage_broadcast','send_staff_messages','view_ledger','view_audit_logs','manage_referrals'],
   doctor:  ['view_patients','write_encounter','manage_prescriptions','create_appointment','view_billing','send_staff_messages','manage_referrals'],
   receptionist: ['create_appointment','view_patients'],
@@ -112,7 +112,7 @@ function applyRBAC(force) {
   if (backupCard) backupCard.hidden = !(currentHasRole('owner') || currentRole === 'super_admin');
   // Admin tabs
   const setTab = document.querySelector('.sidebar-item[data-tab="settings"]');
-  if (setTab) setTab.hidden = !can('manage_staff');
+  if (setTab) setTab.hidden = !can('manage_settings');
   const repTab = document.querySelector('.sidebar-item[data-tab="reports"]');
   if (repTab) repTab.hidden = !can('view_reports');
   const msgTab = document.querySelector('.sidebar-item[data-tab="messaging"]');

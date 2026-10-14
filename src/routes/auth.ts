@@ -168,6 +168,39 @@ export function registerAuthRoutes(app: FastifyInstance, repo: ClinicRepository)
     return { ok: true };
   });
 
+  // Staff: update their OWN profile (self-service; role/branch changes stay with managers).
+  app.post('/api/auth/profile', async (request) => {
+    const auth = await requireAuth(request, repo);
+    const input = z.object({
+      displayName: z.string().optional(),
+      phone: z.string().optional(),
+      specialization: z.string().optional(),
+      qualifications: z.string().optional(),
+      licenseNumber: z.string().optional(),
+    }).parse(request.body);
+    if (!auth.member.id) {
+      // Super admin has no member seat to update.
+      return { ok: true, member: null };
+    }
+    const member = await repo.updateMember(auth.member.id, input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'profile_update', objectType: 'member', objectId: auth.member.id });
+    return { ok: true, member };
+  });
+
+  // Staff: change their own password (verifies the current password first).
+  app.post('/api/auth/change-password', async (request) => {
+    const auth = await requireAuth(request, repo);
+    const input = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }).parse(request.body);
+    const user = await repo.findUserByEmail(auth.member.email);
+    if (!user || !(await bcrypt.compare(input.currentPassword, user.passwordHash))) {
+      throw httpError('WRONG_CURRENT_PASSWORD', 401);
+    }
+    const passwordHash = await bcrypt.hash(input.newPassword, 10);
+    await repo.updateUserPassword(user.id, passwordHash);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'password_change', objectType: 'member', objectId: auth.member.id });
+    return { ok: true };
+  });
+
   // Staff: update
   app.post('/api/staff/:id/update', async (request, reply) => {
     const auth = await requireAuth(request, repo);

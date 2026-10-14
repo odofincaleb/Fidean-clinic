@@ -1480,6 +1480,7 @@ document.querySelectorAll('.sidebar-item').forEach((tab) => {
     localStorage.setItem('clinic_active_tab', tabName);
     // Lazy-load tab data
     if (tab.dataset.tab === 'settings') { loadSettings(); loadMessageLog(); }
+    if (tab.dataset.tab === 'profile') { loadProfile(); }
     if (tab.dataset.tab === 'reports') { loadReport(); }
     if (tab.dataset.tab === 'ledger') { loadLedger(); }
     if (tab.dataset.tab === 'messaging') { markAllStaffMessagesRead(); }
@@ -3367,6 +3368,80 @@ async function populateStaffSelects() {
 // Call from render() after snapshot renders
 // Inject call at end of render()
 /* ── End new handlers ── */
+
+/* ── Profile (self-service) ── */
+async function loadProfile() {
+  try {
+    const resp = await fetch('/api/auth/me', { headers: headers() });
+    const body = await resp.json();
+    if (!resp.ok || !body.member) {
+      showErrorToast((body && body.error) || 'Could not load profile');
+      return;
+    }
+    const m = body.member;
+    const roles = [m.role, ...(m.additionalRoles || [])].filter(Boolean).join(', ');
+    const branches = (m.branchIds && m.branchIds.length) ? m.branchIds.join(', ') : 'All branches';
+    const summary = document.querySelector('#profile-summary');
+    if (summary) {
+      summary.innerHTML = `<strong>${escapeHtml(m.displayName || m.email)}</strong> · ${escapeHtml(roles)}<br>Email: ${escapeHtml(m.email)} · Branches: ${escapeHtml(branches)}`;
+    }
+    const set = (name, val) => {
+      const el = document.querySelector(`#profile-form [name="${name}"]`);
+      if (el) el.value = val || '';
+    };
+    set('displayName', m.displayName); set('phone', m.phone);
+    set('specialization', m.specialization); set('qualifications', m.qualifications); set('licenseNumber', m.licenseNumber);
+  } catch (e) {
+    showErrorToast('Could not load profile');
+  }
+}
+
+document.querySelector('#profile-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const f = event.currentTarget;
+  const fd = new FormData(f);
+  const data = {
+    displayName: String(fd.get('displayName') || '').trim(),
+    phone: String(fd.get('phone') || '').trim(),
+    specialization: String(fd.get('specialization') || '').trim(),
+    qualifications: String(fd.get('qualifications') || '').trim(),
+    licenseNumber: String(fd.get('licenseNumber') || '').trim(),
+  };
+  try {
+    const resp = await fetch('/api/auth/profile', { method: 'POST', headers: headers(), body: JSON.stringify(data) });
+    const body = await resp.json();
+    if (!resp.ok) { showErrorToast((body && body.error) || 'Could not save profile'); return; }
+    showSuccessToast('Profile saved');
+    if (data.displayName) {
+      const t = document.querySelector('#topbar-clinic-name');
+      if (t && t.textContent.startsWith(data.displayName)) { /* keep */ }
+    }
+  } catch (e) {
+    showErrorToast('Could not save profile');
+  }
+});
+
+document.querySelector('#change-password-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const f = event.currentTarget;
+  const fd = new FormData(f);
+  const current = String(fd.get('currentPassword') || '');
+  const next = String(fd.get('newPassword') || '');
+  const confirm = String(fd.get('confirmPassword') || '');
+  if (next !== confirm) { showErrorToast('New passwords do not match'); return; }
+  try {
+    const resp = await fetch('/api/auth/change-password', {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ currentPassword: current, newPassword: next }),
+    });
+    const body = await resp.json();
+    if (!resp.ok) { showErrorToast((body && body.error) || 'Could not change password'); return; }
+    showSuccessToast('Password changed successfully');
+    f.reset();
+  } catch (e) {
+    showErrorToast('Could not change password');
+  }
+});
 
 /* ── Settings ── */
 async function saveSettingsForm(formEl, buttonText) {

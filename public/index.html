@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=57" />
+  <link rel="stylesheet" href="/style.css?v=58" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -195,6 +195,7 @@
       <div class="workspace-grid">
         <nav class="sidebar" role="tablist" aria-label="Clinic modules">
           <div class="sidebar-section">Menu</div>
+          <button class="sidebar-item" data-tab="profile"><span class="icon">🪪</span>Profile</button>
           <button class="sidebar-item active" data-tab="overview"><span class="icon">📊</span>Overview</button>
           <button class="sidebar-item" data-tab="calendar"><span class="icon">📅</span>Calendar</button>
           <button class="sidebar-item" data-tab="appointments"><span class="icon">🩺</span>Appointments</button>
@@ -266,6 +267,47 @@
               <div class="dash-stats" id="dash-stats"></div>
             </div>
           </section>
+      <section class="panel tab-panel" id="profile">
+        <h2>My Profile</h2>
+        <p class="panel-subtitle">View and update your personal details, or change your password.</p>
+        <div class="cards" style="max-width:680px">
+          <article class="card-rich">
+            <h3>👤 Account</h3>
+            <p class="hint" id="profile-summary"></p>
+            <form id="profile-form" class="form">
+              <label>Display name <input name="displayName" required /></label>
+              <label>Phone <input name="phone" /></label>
+              <label>Specialization <select name="specialization">
+                <option value="">None</option>
+                <option value="general">General Practice</option>
+                <option value="dentistry">Dentistry</option>
+                <option value="cardiology">Cardiology</option>
+                <option value="pediatrics">Pediatrics</option>
+                <option value="orthopedics">Orthopedics</option>
+                <option value="dermatology">Dermatology</option>
+                <option value="ophthalmology">Ophthalmology</option>
+                <option value="neurology">Neurology</option>
+                <option value="psychiatry">Psychiatry</option>
+                <option value="obgyn">OB/GYN</option>
+                <option value="radiology">Radiology</option>
+              </select></label>
+              <label>Qualifications <input name="qualifications" /></label>
+              <label>License # <input name="licenseNumber" /></label>
+              <button type="submit">Save profile</button>
+            </form>
+          </article>
+          <article class="card-rich">
+            <h3>🔑 Change Password</h3>
+            <p class="hint">Changing your password logs out your other active sessions.</p>
+            <form id="change-password-form" class="form">
+              <label>Current password <input name="currentPassword" type="password" required minlength="8" autocomplete="current-password" /></label>
+              <label>New password <input name="newPassword" type="password" required minlength="8" autocomplete="new-password" /></label>
+              <label>Confirm new password <input name="confirmPassword" type="password" required /></label>
+              <button type="submit">Change password</button>
+            </form>
+          </article>
+        </div>
+      </section>
       <section class="panel tab-panel" id="branches">
         <h2>Branches</h2>
         <form id="branch-form" class="form">
@@ -1008,7 +1050,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=rbac-v31" type="module"></script>
+  <script src="/app.js?v=rbac-v32" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

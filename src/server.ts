@@ -55,8 +55,8 @@ async function visibleMembers(repo: ClinicRepository, tenantId: string) {
 const memberInput = z.object({
   tenantId: z.string().min(1),
   email: z.string().email(),
-  role: z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer']),
-  additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer'])).optional(),
+  role: z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'pharmacist', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer']),
+  additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'pharmacist', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer'])).optional(),
   branchIds: z.array(z.string()).optional(),
   displayName: z.string().optional(),
   phone: z.string().optional(),
@@ -67,8 +67,8 @@ const memberInput = z.object({
 });
 const memberPatch = z.object({
   displayName: z.string().optional(),
-  role: z.enum(['owner', 'admin', 'branch_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer']).optional(),
-  additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer'])).optional(),
+  role: z.enum(['owner', 'admin', 'branch_manager', 'pharmacist', 'store_manager', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer']).optional(),
+  additionalRoles: z.array(z.enum(['owner', 'admin', 'branch_manager', 'store_manager', 'pharmacist', 'doctor', 'receptionist', 'nurse', 'accountant', 'viewer'])).optional(),
   branchIds: z.array(z.string()).optional(),
   status: z.enum(['invited', 'active', 'revoked']).optional(),
   phone: z.string().optional(),

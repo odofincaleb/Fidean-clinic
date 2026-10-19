@@ -601,6 +601,42 @@ export class MemoryClinicRepository implements ClinicRepository {
     return next;
   }
 
+  async chargePrescription(
+    prescriptionId: string,
+    input: { branchId: string; items: { inventoryItemId: string; quantity: number }[] },
+  ): Promise<{ invoice: Invoice; prescription: Prescription }> {
+    const rx = requireEntity(this.prescriptions.get(prescriptionId), 'PRESCRIPTION_NOT_FOUND');
+    if (rx.status === 'cancelled') throw httpError('PRESCRIPTION_CANCELLED', 409);
+    if (rx.status === 'draft') throw httpError('PRESCRIPTION_NOT_ISSUED', 409);
+    if (rx.status === 'dispensed') throw httpError('PRESCRIPTION_ALREADY_DISPENSED', 409);
+    const items = await this.listInventoryItems(rx.tenantId);
+    const lines: InvoiceLine[] = [];
+    const updatedItems = rx.items.map((presItem) => {
+      const q = input.items.find((c) => c.inventoryItemId === presItem.inventoryItemId);
+      if (!q || !presItem.inventoryItemId) {
+        return { ...presItem, backorderedQty: Math.max(0, (presItem.quantity ?? 1) - (presItem.dispensedQty ?? 0)) };
+      }
+      const inv = items.find((i) => i.id === q.inventoryItemId);
+      if (!inv) throw notFound(`INVENTORY_ITEM_NOT_FOUND: ${q.inventoryItemId}`);
+      const prescribed = presItem.quantity ?? 1;
+      const already = presItem.dispensedQty ?? 0;
+      if (q.quantity <= 0 || q.quantity > prescribed - already) throw httpError('CHARGE_QUANTITY_INVALID', 400);
+      lines.push({ description: inv.name, quantity: q.quantity, unitPriceKobo: inv.sellingPriceKobo ?? 0, inventoryItemId: inv.id });
+      return { ...presItem, dispensedQty: already + q.quantity, backorderedQty: Math.max(0, prescribed - (already + q.quantity)) };
+    });
+    const hasPending = updatedItems.some((it) => (it.backorderedQty ?? 0) > 0);
+    const rxNext = { ...rx, items: updatedItems, status: (hasPending ? 'partially_dispensed' : 'dispensed') as Prescription['status'] };
+    this.prescriptions.set(prescriptionId, rxNext);
+    const invoice = await this.createInvoice({
+      tenantId: rx.tenantId,
+      branchId: input.branchId,
+      patientId: rx.patientId,
+      encounterId: rx.encounterId || undefined,
+      lines,
+    });
+    return { invoice, prescription: rxNext };
+  }
+
   async listInvoices(tenantId: string, filters?: { patientId?: string; status?: Invoice['status'] }): Promise<Invoice[]> {
     return [...this.invoices.values()].filter((item) => {
       if (item.tenantId !== tenantId) return false;
@@ -619,6 +655,13 @@ export class MemoryClinicRepository implements ClinicRepository {
     if (!this.branches.get(input.branchId) || this.branches.get(input.branchId)?.tenantId !== input.tenantId) throw notFound('BRANCH_NOT_FOUND');
     if (!this.patients.get(input.patientId) || this.patients.get(input.patientId)?.tenantId !== input.tenantId) throw notFound('PATIENT_NOT_FOUND');
     const totals = finalizeInvoiceFields({ lines: input.lines, discountKobo: input.discountKobo, taxKobo: input.taxKobo });
+    const inventoryDeductions = input.lines.filter(l => l.inventoryItemId).map((line) => ({
+      itemId: line.inventoryItemId!,
+      name: line.description,
+      quantity: line.quantity,
+      unitPriceKobo: line.unitPriceKobo,
+      deducted: false,
+    }));
     this.invoiceSeq += 1;
     const invoice: Invoice = {
       id: nanoid(),
@@ -634,8 +677,9 @@ export class MemoryClinicRepository implements ClinicRepository {
       createdAt: now(),
       ...totals,
     };
-    this.invoices.set(invoice.id, invoice);
-    return invoice;
+    const withDed = inventoryDeductions.length ? { ...invoice, inventoryDeductions } : invoice;
+    this.invoices.set(withDed.id, withDed);
+    return withDed;
   }
 
   async updateInvoice(invoiceId: string, patch: InvoicePatch): Promise<Invoice> {
@@ -676,6 +720,28 @@ export class MemoryClinicRepository implements ClinicRepository {
     const current = requireEntity(this.invoices.get(invoiceId), 'INVOICE_NOT_FOUND');
     const next = applyInvoicePayment(current, amountKobo);
     this.invoices.set(invoiceId, next);
+    if (next.status === 'paid' || next.status === 'part_paid') return this.deductInvoiceInventory(invoiceId);
+    return next;
+  }
+
+  async deductInvoiceInventory(invoiceId: string): Promise<Invoice> {
+    const current = requireEntity(this.invoices.get(invoiceId), 'INVOICE_NOT_FOUND');
+    if (current.status === 'void') return current;
+    const pending = (current.inventoryDeductions ?? []).filter((d: any) => !d?.deducted);
+    if (!pending.length) return current;
+    const next = {
+      ...current,
+      inventoryDeductions: (current.inventoryDeductions ?? []).map((d: any) => (pending.some((p: any) => p.itemId === d.itemId) ? { ...d, deducted: true } : d)),
+    };
+    this.invoices.set(invoiceId, next);
+    return next;
+  }
+
+  async restockInvoiceInventory(invoiceId: string): Promise<Invoice> {
+    const current = requireEntity(this.invoices.get(invoiceId), 'INVOICE_NOT_FOUND');
+    if (!(current.inventoryDeductions ?? []).some((d: any) => d?.deducted)) return current;
+    const next = { ...current, inventoryDeductions: (current.inventoryDeductions ?? []).map((d: any) => ({ ...d, deducted: false })) };
+    this.invoices.set(invoiceId, next);
     return next;
   }
 
@@ -691,6 +757,7 @@ export class MemoryClinicRepository implements ClinicRepository {
     });
     const next = { ...current, ...totals };
     this.invoices.set(invoiceId, next);
+    if (totals.status === 'void') return this.restockInvoiceInventory(invoiceId);
     return next;
   }
 

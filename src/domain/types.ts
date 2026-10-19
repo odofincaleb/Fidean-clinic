@@ -1,4 +1,4 @@
-export type Role = 'owner' | 'admin' | 'branch_manager' | 'doctor' | 'receptionist' | 'nurse' | 'accountant' | 'store_manager' | 'viewer';
+export type Role = 'owner' | 'admin' | 'branch_manager' | 'doctor' | 'receptionist' | 'nurse' | 'accountant' | 'store_manager' | 'pharmacist' | 'viewer';
 
 export type Permission =
   | 'manage_subscription'
@@ -18,6 +18,7 @@ export type Permission =
   | 'view_ledger'
   | 'view_audit_logs'
   | 'manage_referrals'
+  | 'dispense'
   | 'manage_settings';
 
 export interface Tenant {
@@ -267,6 +268,12 @@ export interface PrescriptionItem {
   instructions?: string;
   /** Inventory item this prescription maps to (optional — free-text meds have none). */
   inventoryItemId?: string;
+  /** Prescribed quantity (defaults to 1). */
+  quantity?: number;
+  /** Quantity already dispensed (fulfilled). */
+  dispensedQty?: number;
+  /** Quantity still owing (prescribed − dispensed), managed by the pharmacy queue. */
+  backorderedQty?: number;
 }
 
 export interface Prescription {
@@ -277,7 +284,7 @@ export interface Prescription {
   doctorMemberId?: string;
   items: PrescriptionItem[];
   notes?: string;
-  status: 'draft' | 'issued' | 'cancelled';
+  status: 'draft' | 'issued' | 'partially_dispensed' | 'dispensed' | 'cancelled';
   issuedAt?: string;
   createdAt: string;
 }
@@ -286,6 +293,8 @@ export interface InvoiceLine {
   description: string;
   quantity: number;
   unitPriceKobo: number;
+  /** Inventory item this line maps to (if the line is a dispensable pharmacy good). */
+  inventoryItemId?: string;
 }
 
 export interface Invoice {

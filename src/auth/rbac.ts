@@ -2,14 +2,15 @@ import type { Member, Permission, Role } from '../domain/types.js';
 import { memberRoles, hasRole } from '../domain/types.js';
 
 const matrix: Record<Role, Permission[]> = {
-  owner: ['manage_subscription', 'manage_staff', 'manage_branches', 'manage_services', 'manage_broadcast', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'manage_inventory', 'send_staff_messages', 'view_ledger', 'view_audit_logs', 'manage_referrals', 'manage_settings'],
-  admin: ['manage_staff', 'manage_branches', 'manage_services', 'manage_broadcast', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'manage_inventory', 'send_staff_messages', 'view_ledger', 'view_audit_logs', 'manage_referrals', 'manage_settings'],
+  owner: ['manage_subscription', 'manage_staff', 'manage_branches', 'manage_services', 'manage_broadcast', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'manage_inventory', 'dispense', 'send_staff_messages', 'view_ledger', 'view_audit_logs', 'manage_referrals', 'manage_settings'],
+  admin: ['manage_staff', 'manage_branches', 'manage_services', 'manage_broadcast', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'manage_inventory', 'dispense', 'send_staff_messages', 'view_ledger', 'view_audit_logs', 'manage_referrals', 'manage_settings'],
   branch_manager: ['manage_staff', 'manage_branches', 'manage_appointments', 'create_appointment', 'view_patients', 'write_encounter', 'view_billing', 'manage_billing', 'view_reports', 'manage_broadcast', 'send_staff_messages', 'view_ledger', 'view_audit_logs', 'manage_referrals'],
   doctor: ['view_patients', 'write_encounter', 'create_appointment', 'view_billing', 'send_staff_messages', 'manage_referrals'],
   receptionist: ['create_appointment', 'view_patients'],
-  nurse: ['view_patients', 'write_encounter', 'send_staff_messages'],
+  nurse: ['view_patients', 'write_encounter', 'send_staff_messages', 'dispense'],
   accountant: ['view_billing', 'manage_billing', 'view_reports', 'manage_services', 'view_ledger'],
-  store_manager: ['manage_inventory', 'send_staff_messages', 'view_patients', 'view_reports'],
+  store_manager: ['manage_inventory', 'dispense', 'send_staff_messages', 'view_patients', 'view_reports'],
+  pharmacist: ['view_patients', 'view_billing', 'manage_billing', 'manage_inventory', 'dispense', 'send_staff_messages', 'view_ledger'],
   viewer: ['view_patients', 'view_reports'],
 };
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=59" />
+  <link rel="stylesheet" href="/style.css?v=60" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -209,6 +209,7 @@
           <div class="sidebar-section">Clinical</div>
           <button class="sidebar-item" data-tab="encounters"><span class="icon">📝</span>Consultations</button>
           <button class="sidebar-item" data-tab="prescriptions"><span class="icon">💊</span>Prescriptions</button>
+          <button class="sidebar-item" data-tab="pharmacy"><span class="icon">🧪</span>Pharmacy</button>
           <button class="sidebar-item" data-tab="documents"><span class="icon">📄</span>Documents</button>
           <div class="sidebar-section">Operations</div>
           <button class="sidebar-item" data-tab="billing"><span class="icon">💰</span>Billing</button>
@@ -432,6 +433,7 @@
             <option value="branch_manager">Branch Manager</option>
             <option value="accountant">Accountant</option>
             <option value="store_manager">Store Manager</option>
+            <option value="pharmacist">Pharmacist</option>
             <option value="admin">Admin</option>
           </select></label>
           <label>Additional Roles <span style="display:block;color:var(--text-tertiary);font-size:11px;margin-top:2px">Hold Ctrl/Cmd to select more. Use for staff with multiple duties (e.g. Nurse + Receptionist).</span>
@@ -442,6 +444,7 @@
             <option value="branch_manager">Branch Manager</option>
             <option value="accountant">Accountant</option>
             <option value="store_manager">Store Manager</option>
+            <option value="pharmacist">Pharmacist</option>
             <option value="admin">Admin</option>
             <option value="viewer">Viewer</option>
           </select></label>
@@ -610,6 +613,17 @@
           <button type="submit">Save draft</button>
         </form>
         <div id="prescription-list" class="cards"></div>
+      </section>
+      <section class="panel tab-panel" id="pharmacy">
+        <h2>🧪 Pharmacy · Dispensing</h2>
+        <p class="hint">Look up an issued prescription and charge the patient. The charge appears in Billing; inventory stock is deducted only when the payment is approved.</p>
+        <div class="form" style="grid-template-columns:1fr 1fr">
+          <label>Search issued prescription by patient
+            <div class="patient-ac" id="pharmacy-patient-ac"></div>
+          </label>
+          <label>Branch <select id="pharmacy-branch-select"><option value="">Select branch...</option></select></label>
+        </div>
+        <div id="pharmacy-list" class="cards"></div>
       </section>
       <section class="panel tab-panel" id="billing">
         <h2>Billing</h2>
@@ -1057,7 +1071,7 @@
         <div id="patient-documents" class="cards"></div>
       </section>
     </div>
-    <footer style="text-align:right;padding:8px 16px;font-size:10px;color:#1e3a5f;border-top:1px solid rgba(0,0,0,.04);margin-top:16px">Fidean Clinic OS v0.9.2</footer>
+    <footer style="text-align:right;padding:8px 16px;font-size:10px;color:#1e3a5f;border-top:1px solid rgba(0,0,0,.04);margin-top:16px">Fidean Clinic OS v0.9.3</footer>
     <!-- Private note modal (doctor-to-doctor reference with patient link + feedback) -->
     <div class="modal-overlay" id="private-note-modal" hidden>
       <div class="modal-card" style="max-width:520px">
@@ -1085,7 +1099,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=cons-v01" type="module"></script>
+  <script src="/app.js?v=pharm-v01" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

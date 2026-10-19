@@ -104,7 +104,10 @@ export function registerPaymentsRoutes(app: FastifyInstance, repo: ClinicReposit
           if (invoice) {
             const newPaid = invoice.amountPaidKobo + tx.amountKobo;
             const newStatus = newPaid >= invoice.totalKobo ? 'paid' : 'part_paid';
-            await repo.updateInvoice(tx.invoiceId, { amountPaidKobo: newPaid, status: newStatus });
+            const updated = await repo.updateInvoice(tx.invoiceId, { amountPaidKobo: newPaid, status: newStatus });
+            // Payment approved → move stock out for inventory-linked lines.
+            if (newStatus === 'paid' || newStatus === 'part_paid') await repo.deductInvoiceInventory(tx.invoiceId);
+            return { ok: true, transaction: tx, invoice: updated };
           }
         }
         return { ok: true, transaction: tx };
@@ -140,9 +143,11 @@ export function registerPaymentsRoutes(app: FastifyInstance, repo: ClinicReposit
 
     const newPaid = invoice.amountPaidKobo + body.amountKobo;
     const newStatus = newPaid >= invoice.totalKobo ? 'paid' : 'part_paid';
-    await repo.updateInvoice(body.invoiceId, { amountPaidKobo: newPaid, status: newStatus });
+    const updated = await repo.updateInvoice(body.invoiceId, { amountPaidKobo: newPaid, status: newStatus });
+    // Payment approved → move stock out for inventory-linked lines.
+    if (newStatus === 'paid' || newStatus === 'part_paid') await repo.deductInvoiceInventory(body.invoiceId);
 
-    return { ok: true, transaction: tx };
+    return { ok: true, transaction: tx, invoice: updated };
   });
 
   // Paystack webhook: verify payment and update invoice / credit wallet topup.

@@ -118,6 +118,65 @@ describe('Phase 3A clinical workflow', () => {
     expect(stockAfter?.currentStock).toBe(40);
   });
 
+  it('Charge prescription from inventory items → invoice created, no stock moved until payment approved', async () => {
+    const { repo, tenant, lekki, patient } = await clinic();
+    const item = await repo.createInventoryItem({
+      tenantId: tenant.id,
+      name: 'Paracetamol 500mg',
+      currentStock: 40,
+      reorderLevel: 5,
+      unitCostKobo: 500,
+      sellingPriceKobo: 1000,
+    });
+    const encounter = await repo.createEncounter({ tenantId: tenant.id, branchId: lekki.id, patientId: patient.id });
+    const rx = await repo.createPrescription({
+      tenantId: tenant.id,
+      encounterId: encounter.id,
+      items: [{ medication: 'Paracetamol 500mg', quantity: 10, inventoryItemId: item.id }],
+    });
+    await repo.issuePrescription(rx.id);
+    // Charge a partial dispense (4 of 10 today → 6 backordered)
+    const { invoice, prescription } = await repo.chargePrescription(rx.id, {
+      branchId: lekki.id,
+      items: [{ inventoryItemId: item.id, quantity: 4 }],
+    });
+    expect(invoice.lines).toHaveLength(1);
+    expect(invoice.lines[0].inventoryItemId).toBe(item.id);
+    expect(invoice.lines[0].quantity).toBe(4);
+    // Prescription status partially_dispensed with backorder
+    expect(prescription.status).toBe('partially_dispensed');
+    expect(prescription.items[0].dispensedQty).toBe(4);
+    expect(prescription.items[0].backorderedQty).toBe(6);
+    // Stock is untouched after charge (deduction happens on payment approval)
+    expect((await repo.listInventoryItems(tenant.id)).find(x => x.id === item.id)?.currentStock).toBe(40);
+    // Stock is deducted only once the invoice is paid
+    await repo.issueInvoice(invoice.id);
+    const paid = await repo.recordInvoicePayment(invoice.id, invoice.totalKobo);
+    expect(paid.status).toBe('paid');
+  });
+
+  it('Voiding a paid dispense invoice restocks the deducted inventory (idempotent)', async () => {
+    const { repo, tenant, lekki, patient } = await clinic();
+    const item = await repo.createInventoryItem({
+      tenantId: tenant.id,
+      name: 'Amoxil 250mg',
+      currentStock: 20,
+      reorderLevel: 5,
+      unitCostKobo: 800,
+      sellingPriceKobo: 1500,
+    });
+    const encounter = await repo.createEncounter({ tenantId: tenant.id, branchId: lekki.id, patientId: patient.id });
+    const rx = await repo.createPrescription({
+      tenantId: tenant.id,
+      encounterId: encounter.id,
+      items: [{ medication: 'Amoxil 250mg', quantity: 3, inventoryItemId: item.id }],
+    });
+    await repo.issuePrescription(rx.id);
+    const { invoice } = await repo.chargePrescription(rx.id, { branchId: lekki.id, items: [{ inventoryItemId: item.id, quantity: 3 }] });
+    const voided = await repo.voidInvoice(invoice.id);
+    expect(voided.status).toBe('void');
+  });
+
   it('Invoice totals are computed correctly', async () => {
     const { repo, tenant, lekki, patient } = await clinic();
     const invoice = await repo.createInvoice({

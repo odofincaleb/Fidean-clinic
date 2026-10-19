@@ -1094,6 +1094,51 @@ export class PostgresClinicRepository implements ClinicRepository {
     return mapPrescription(result.rows[0]);
   }
 
+  /** Build an invoice from an issued prescription's inventory items (partial dispense
+   *  supported), advancing dispensed/backordered quantities. Stock is not moved here —
+   *  deductInvoiceInventory runs when the invoice's payment is approved. */
+  async chargePrescription(
+    prescriptionId: string,
+    input: { branchId: string; items: { inventoryItemId: string; quantity: number }[] },
+  ): Promise<{ invoice: Invoice; prescription: Prescription }> {
+    const rx = await this.getPrescription(prescriptionId);
+    if (!rx) throw notFound('PRESCRIPTION_NOT_FOUND');
+    if (rx.status === 'cancelled') throw httpError('PRESCRIPTION_CANCELLED', 409);
+    if (rx.status === 'draft') throw httpError('PRESCRIPTION_NOT_ISSUED', 409);
+    if (rx.status === 'dispensed') throw httpError('PRESCRIPTION_ALREADY_DISPENSED', 409);
+    const branch = await this.getBranch(input.branchId);
+    if (!branch || branch.tenantId !== rx.tenantId) throw notFound('BRANCH_NOT_FOUND');
+    const items = await this.listInventoryItems(rx.tenantId);
+    const lines: InvoiceLine[] = [];
+    const updatedItems = rx.items.map((presItem) => {
+      const q = input.items.find((c) => c.inventoryItemId === presItem.inventoryItemId);
+      if (!q || !presItem.inventoryItemId) {
+        return { ...presItem, backorderedQty: Math.max(0, (presItem.quantity ?? 1) - (presItem.dispensedQty ?? 0)) };
+      }
+      const inv = items.find((i) => i.id === q.inventoryItemId);
+      if (!inv) throw notFound(`INVENTORY_ITEM_NOT_FOUND: ${q.inventoryItemId}`);
+      const prescribed = presItem.quantity ?? 1;
+      const already = presItem.dispensedQty ?? 0;
+      if (q.quantity <= 0 || q.quantity > prescribed - already) throw httpError('CHARGE_QUANTITY_INVALID', 400);
+      lines.push({ description: inv.name, quantity: q.quantity, unitPriceKobo: inv.sellingPriceKobo ?? 0, inventoryItemId: inv.id });
+      return { ...presItem, dispensedQty: already + q.quantity, backorderedQty: Math.max(0, prescribed - (already + q.quantity)) };
+    });
+    const hasPending = updatedItems.some((it) => (it.backorderedQty ?? 0) > 0);
+    const newStatus = hasPending ? 'partially_dispensed' : 'dispensed';
+    const invResult = await this.pool.query(
+      `UPDATE prescriptions SET items=$2, status=$3 WHERE id=$1 RETURNING *`,
+      [prescriptionId, JSON.stringify(updatedItems), newStatus],
+    );
+    const invoice = await this.createInvoice({
+      tenantId: rx.tenantId,
+      branchId: input.branchId,
+      patientId: rx.patientId,
+      encounterId: rx.encounterId || undefined,
+      lines,
+    });
+    return { invoice, prescription: mapPrescription(invResult.rows[0]) };
+  }
+
   async listInvoices(tenantId: string, filters?: { patientId?: string; status?: Invoice['status'] }): Promise<Invoice[]> {
     const result = await this.pool.query('SELECT * FROM invoices WHERE tenant_id = $1 ORDER BY created_at', [tenantId]);
     return result.rows.map(mapInvoice).filter((item) => {
@@ -1116,29 +1161,71 @@ export class PostgresClinicRepository implements ClinicRepository {
     if (!patient || patient.tenantId !== input.tenantId) throw notFound('PATIENT_NOT_FOUND');
     const totals = finalizeInvoiceFields({ lines: input.lines, discountKobo: input.discountKobo, taxKobo: input.taxKobo });
     const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
-    // Deduct inventory stock for any lines with inventoryItemId
-    const inventoryDeductions: { itemId: string; name: string; quantity: number; unitPriceKobo: number }[] = [];
+    // Record inventory-linked lines as PENDING deductions (medication/goods). Stock is
+    // NOT moved here — it is deducted only when payment is approved (see
+    // deductInvoiceInventory). Each pending line is tagged `deducted: false`.
     const inventoryItems = await this.listInventoryItems(input.tenantId);
+    const inventoryDeductions: { itemId: string; name: string; quantity: number; unitPriceKobo: number; deducted: boolean }[] = [];
     for (const line of input.lines.filter(l => l.inventoryItemId)) {
       const item = inventoryItems.find(i => i.id === line.inventoryItemId);
       if (!item) throw notFound(`INVENTORY_ITEM_NOT_FOUND: ${line.inventoryItemId}`);
-      if (item.currentStock < line.quantity) {
-        throw httpError(`INSUFFICIENT_STOCK for ${item.name}: have ${item.currentStock}, need ${line.quantity}`, 409);
-      }
-      await this.recordInventoryMovement(line.inventoryItemId, {
-        tenantId: input.tenantId,
-        movementType: 'dispense',
-        quantity: line.quantity,
-        reference: invoiceNumber,
-        notes: `Dispensed for invoice ${invoiceNumber}`,
-      });
-      inventoryDeductions.push({ itemId: item.id, name: item.name, quantity: line.quantity, unitPriceKobo: line.unitPriceKobo });
+      inventoryDeductions.push({ itemId: item.id, name: item.name, quantity: line.quantity, unitPriceKobo: line.unitPriceKobo, deducted: false });
     }
     const result = await this.pool.query(
       `INSERT INTO invoices (tenant_id, branch_id, patient_id, appointment_id, encounter_id, invoice_number, lines, subtotal_kobo, discount_kobo, tax_kobo, total_kobo, amount_paid_kobo, hmo_coverage_kobo, hmo_insurance_id, currency, status, inventory_deductions)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
       [input.tenantId, input.branchId, input.patientId, input.appointmentId ?? null, input.encounterId ?? null, invoiceNumber, JSON.stringify(input.lines), totals.subtotalKobo, totals.discountKobo, totals.taxKobo, totals.totalKobo, totals.amountPaidKobo, input.hmoCoverageKobo ?? 0, input.hmoInsuranceId ?? null, input.currency ?? 'NGN', totals.status, JSON.stringify(inventoryDeductions)],
     );
+    return mapInvoice(result.rows[0]);
+  }
+
+  /** Deduct stock for approved (paid) inventory lines — idempotent. Called once a payment
+   *  has been recorded so the clinic never moves stock before the charge is paid. */
+  async deductInvoiceInventory(invoiceId: string): Promise<Invoice> {
+    const current = await this.getInvoice(invoiceId);
+    if (!current) throw notFound('INVOICE_NOT_FOUND');
+    if (current.status === 'void') return current;
+    const pending = (current.inventoryDeductions ?? []).filter((d: any) => !d?.deducted);
+    if (pending.length === 0) return current;
+    const inventoryItems = await this.listInventoryItems(current.tenantId);
+    const next: any[] = (current.inventoryDeductions ?? []).slice();
+    for (const d of pending) {
+      const item = inventoryItems.find(i => i.id === d.itemId);
+      if (!item) continue;
+      if (item.currentStock < d.quantity) {
+        throw httpError(`INSUFFICIENT_STOCK for ${item.name}: have ${item.currentStock}, need ${d.quantity}. Backorder or restock before approving.`, 409);
+      }
+      await this.recordInventoryMovement(d.itemId, {
+        tenantId: current.tenantId,
+        movementType: 'dispense',
+        quantity: d.quantity,
+        reference: current.invoiceNumber,
+        notes: `Dispensed on approval of invoice ${current.invoiceNumber}`,
+      });
+      const idx = next.findIndex((x) => x?.itemId === d.itemId);
+      if (idx >= 0) next[idx] = { ...next[idx], deducted: true };
+    }
+    const result = await this.pool.query(`UPDATE invoices SET inventory_deductions=$2 WHERE id=$1 RETURNING *`, [invoiceId, JSON.stringify(next)]);
+    return mapInvoice(result.rows[0]);
+  }
+
+  /** Restock inventory for a voided invoice (reverse previous deductions) — idempotent. */
+  async restockInvoiceInventory(invoiceId: string): Promise<Invoice> {
+    const current = await this.getInvoice(invoiceId);
+    if (!current) throw notFound('INVOICE_NOT_FOUND');
+    const deducted = (current.inventoryDeductions ?? []).filter((d: any) => d?.deducted);
+    if (deducted.length === 0) return current;
+    const next: any[] = (current.inventoryDeductions ?? []).map((d: any) => ({ ...d, deducted: false }));
+    for (const d of deducted) {
+      await this.recordInventoryMovement(d.itemId, {
+        tenantId: current.tenantId,
+        movementType: 'return',
+        quantity: d.quantity,
+        reference: current.invoiceNumber,
+        notes: `Restocked after void of invoice ${current.invoiceNumber}`,
+      });
+    }
+    const result = await this.pool.query(`UPDATE invoices SET inventory_deductions=$2 WHERE id=$1 RETURNING *`, [invoiceId, JSON.stringify(next)]);
     return mapInvoice(result.rows[0]);
   }
 
@@ -1192,7 +1279,12 @@ export class PostgresClinicRepository implements ClinicRepository {
       `UPDATE invoices SET amount_paid_kobo=$2, status=$3, issued_at=$4 WHERE id=$1 RETURNING *`,
       [invoiceId, next.amountPaidKobo, next.status, next.issuedAt],
     );
-    return mapInvoice(result.rows[0]);
+    const updated = mapInvoice(result.rows[0]);
+    // Payment approved → move stock out for inventory-linked lines (idempotent).
+    if (next.status === 'paid' || next.status === 'part_paid') {
+      await this.deductInvoiceInventory(invoiceId);
+    }
+    return updated;
   }
 
   async voidInvoice(invoiceId: string): Promise<Invoice> {
@@ -1207,6 +1299,10 @@ export class PostgresClinicRepository implements ClinicRepository {
       voided: true,
     });
     const result = await this.pool.query(`UPDATE invoices SET status=$2 WHERE id=$1 RETURNING *`, [invoiceId, totals.status]);
+    // Void → return any deducted stock (idempotent).
+    if (totals.status === 'void') {
+      await this.restockInvoiceInventory(invoiceId);
+    }
     return mapInvoice(result.rows[0]);
   }
 

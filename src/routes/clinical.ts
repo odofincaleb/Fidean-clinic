@@ -183,6 +183,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
         duration: z.string().optional(),
         instructions: z.string().optional(),
         inventoryItemId: z.string().optional(),
+        quantity: z.number().int().positive().optional(),
       })).min(1),
     }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
@@ -218,6 +219,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
         duration: z.string().optional(),
         instructions: z.string().optional(),
         inventoryItemId: z.string().optional(),
+        quantity: z.number().int().positive().optional(),
       })).min(1).optional(),
     }).parse(request.body);
     return { ok: true, prescription: await repo.updatePrescription(params.prescriptionId, patch) };
@@ -242,6 +244,29 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
     });
     await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'prescription_issue', objectType: 'prescription', objectId: issued.id });
     return { ok: true, prescription: issued };
+  });
+
+  // Charge a patient from an issued prescription's inventory items → creates an invoice
+  // that lands in Billing. Stock is NOT moved at charge time — the inventory deduction
+  // runs when the invoice's payment is approved (see deductInvoiceInventory in payments).
+  app.post('/api/prescriptions/:prescriptionId/charge', async (request, reply) => {
+    const auth = await requireAuth(request, repo);
+    assertCan(auth.member, 'dispense');
+    const params = z.object({ prescriptionId: z.string() }).parse(request.params);
+    const prescription = await repo.getPrescription(params.prescriptionId);
+    if (!prescription) throw httpError('PRESCRIPTION_NOT_FOUND', 404);
+    if (prescription.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
+    const input = z.object({
+      branchId: z.string(),
+      items: z.array(z.object({ inventoryItemId: z.string(), quantity: z.number().int().positive() })).min(1),
+    }).parse(request.body);
+    if (prescription.patientId) {
+      const patient = await repo.getPatient(prescription.patientId);
+      if (!patient) throw httpError('PATIENT_NOT_FOUND', 404);
+    }
+    const { invoice, prescription: updated } = await repo.chargePrescription(params.prescriptionId, input);
+    await audit(repo, { tenantId: auth.tenantId, ...staffAudit(auth.member.id), action: 'prescription_charge', objectType: 'prescription', objectId: updated.id, details: { invoiceId: invoice.id } });
+    return reply.code(201).send({ ok: true, invoice, prescription: updated });
   });
 
   app.get('/api/invoices', async (request) => {

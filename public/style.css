@@ -1054,3 +1054,9 @@ button { border: 0; cursor: pointer; }
 /* Signed / locked consultation */
 .locked-note{display:inline-block;margin-top:6px;color:var(--text-tertiary);font-size:.75rem}
 .card-rich.is-editing{background:#fafafa}
+
+/* Pharmacy dispensing queue */
+.rx-table{width:100%;border-collapse:collapse;font-size:.84rem;margin-top:6px}
+.rx-table th,.rx-table td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.rx-table th{background:#f3effc;color:var(--purple-strong);font-weight:700}
+.pharm-qty{width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:.84rem}

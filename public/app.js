@@ -63,9 +63,10 @@ const ROLE_PERMS = {
   branch_manager: ['manage_staff','manage_branches','manage_appointments','create_appointment','view_patients','write_encounter','view_billing','manage_billing','view_reports','manage_broadcast','send_staff_messages','view_ledger','view_audit_logs','manage_referrals'],
   doctor:  ['view_patients','write_encounter','manage_prescriptions','create_appointment','view_billing','send_staff_messages','manage_referrals'],
   receptionist: ['create_appointment','view_patients'],
-  nurse:   ['view_patients','write_encounter','send_staff_messages'],
+  nurse:   ['view_patients','write_encounter','send_staff_messages','dispense'],
   accountant: ['view_billing','manage_billing','manage_services','view_reports','view_ledger'],
-  store_manager: ['manage_inventory','send_staff_messages'],
+  store_manager: ['manage_inventory','dispense','send_staff_messages'],
+  pharmacist: ['view_patients','view_billing','manage_billing','manage_inventory','dispense','send_staff_messages','view_ledger'],
   viewer:  ['view_patients','view_reports'],
 };
 let currentRole = null;
@@ -119,6 +120,8 @@ function applyRBAC(force) {
   if (msgTab) msgTab.hidden = !can('send_staff_messages');
   const invTab = document.querySelector('.sidebar-item[data-tab="inventory"]');
   if (invTab) invTab.hidden = !can('manage_inventory');
+  const pharmTab = document.querySelector('.sidebar-item[data-tab="pharmacy"]');
+  if (pharmTab) pharmTab.hidden = !can('dispense');
   const ledTab = document.querySelector('.sidebar-item[data-tab="ledger"]');
   if (ledTab) ledTab.hidden = !can('view_ledger');
   const audTab = document.querySelector('.sidebar-item[data-tab="audit-logs"]');
@@ -278,6 +281,71 @@ function refreshEncounterContext() {
   panel.hidden = !patientId;
 }
 let currentEncounterEditId = '';
+
+// ── Pharmacy queue: list issued/partially-dispensed prescriptions, filterable by
+//    patient + branch, with per-item partial dispense input and a "Charge patient"
+//    action that creates an invoice (stock deducted only on payment approval).
+function renderPharmacyQueue() {
+  const list = document.querySelector('#pharmacy-list');
+  if (!list) return;
+  const pid = document.querySelector('#pharmacy-patient-ac .ac-hidden')?.value || '';
+  const branchId = document.querySelector('#pharmacy-branch-select')?.value || '';
+  const rx = (snapshot.prescriptions || []).filter((p) => ['issued', 'partially_dispensed'].includes(p.status));
+  const q = rx.filter((p) => {
+    if (pid && p.patientId !== pid) return false;
+    const encounter = (snapshot.encounters || []).find(e => e.id === p.encounterId);
+    if (branchId && encounter && encounter.branchId !== branchId) return false;
+    return true;
+  });
+  if (!q.length) { list.innerHTML = '<p class="detail-empty">No prescriptions ready for dispensing. Search a patient or pick a branch.</p>'; return; }
+  const invItems = snapshot.inventoryItems || [];
+  list.innerHTML = q.map((p) => {
+    const patient = (snapshot.patients || []).find(pt => pt.id === p.patientId);
+    const pname = patient ? `${patient.firstName} ${patient.lastName || ''}`.trim() : 'Patient';
+    const rows = p.items.map((it, idx) => {
+      const inv = it.inventoryItemId ? invItems.find(i => i.id === it.inventoryItemId) : null;
+      const prescribed = it.quantity ?? 1;
+      const remaining = prescribed - (it.dispensedQty ?? 0);
+      const stockLabel = inv ? ` · stock ${inv.currentStock}${inv.unit ? ' ' + escapeHtml(inv.unit) : ''}` : '';
+      const invNote = inv ? `<span class="badge badge-active" title="Dispensed ${it.dispensedQty ?? 0} of ${prescribed}; ${it.backorderedQty ?? 0} backordered">inventory</span>` : '<span class="badge">free-text</span>';
+      const chargeInput = (remaining > 0 && it.inventoryItemId) ? `<td><input type="number" class="pharm-qty" data-rx="${p.id}" data-item="${it.inventoryItemId}" data-remaining="${remaining}" min="1" max="${remaining}" value="${remaining}" placeholder="qty" /></td>` : `<td>${remaining > 0 ? '—' : 'full'}${it.backorderedQty ? ` (${it.backorderedQty} backordered)` : ''}</td>`;
+      return `<tr><td>${escapeHtml(it.medication)} ${invNote}</td><td>${prescribed}</td><td>${it.dispensedQty ?? 0}</td><td>${it.backorderedQty ?? 0}</td>${chargeInput}</tr>`;
+    }).join('');
+    return `<article class="card-rich"><h3>${escapeHtml(pname)} · ${p.status === 'partially_dispensed' ? 'partially dispensed' : 'ready to dispense'}</h3><p class="card-meta">${patient?.clinicPatientId ? 'ID: ' + escapeHtml(patient.clinicPatientId) : ''}${patient?.phone ? ' · ' + escapeHtml(patient.phone) : ''}</p>
+      <table class="rx-table"><thead><tr><th>Medication</th><th>Rx</th><th>Disp.</th><th>Backorder</th><th>Qty now</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="notif-actions" style="margin-top:8px"><button class="btn" data-charge-rx="${p.id}">Charge patient → invoice</button></div>
+    </article>`;
+  }).join('') || '<p class="detail-empty">No matching prescriptions.</p>';
+}
+
+function chargePrescription(rxId) {
+  const frame = document.querySelector(`[data-charge-rx="${rxId}"]`)?.closest('article');
+  if (!frame) return;
+  const rows = frame.querySelectorAll('.pharm-qty');
+  const items = [];
+  rows.forEach((input) => {
+    const q = Number(input.value);
+    if (q && q >= 1 && q <= Number(input.dataset.remaining)) items.push({ inventoryItemId: input.dataset.item, quantity: q });
+  });
+  if (!items.length) { showErrorToast('Set at least one quantity to dispense.'); return; }
+  const branchId = document.querySelector('#pharmacy-branch-select')?.value;
+  if (!branchId) { showErrorToast('Select a branch.'); return; }
+  const rxPatient = (snapshot.prescriptions || []).find(p => p.id === rxId)?.patientId;
+  const encounter = (snapshot.encounters || []).find(e => e.patientId === rxPatient);
+  const useBranch = branchId || encounter?.branchId || (snapshot.branches || [])[0]?.id;
+  if (!useBranch) { showErrorToast('No branch available.'); return; }
+  fetch(`/api/prescriptions/${rxId}/charge`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ branchId: useBranch, items }),
+  }).then(r => r.json()).then((d) => {
+    if (d.ok) {
+      showSuccessToast(`Invoice ` + (d.invoice?.invoiceNumber || '') + ' created — appears in Billing.');
+      refresh();
+    } else {
+      showErrorToast(d.error || 'Charge failed');
+    }
+  }).catch((e) => showErrorToast('Charge failed: ' + (e.message || e)));
+}
 
 function syncPatientAutocompletes() {
   ['encounter-patient-ac', 'prescription-patient-ac', 'invoice-patient-ac', 'document-patient-ac', 'patient-invite-ac', 'appointment-patient-ac'].forEach(id => {
@@ -841,6 +909,14 @@ function render() {
     renderPatientAutocomplete('invoice-patient-ac', 'patientId', '');
     renderPatientAutocomplete('document-patient-ac', 'patientId', '');
     renderPatientAutocomplete('patient-invite-ac', 'patientId', '');
+    // ── Pharmacy queue ──
+    const pharmBranch = document.querySelector('#pharmacy-branch-select');
+    if (pharmBranch) pharmBranch.innerHTML = '<option value="">All branches</option>' + (snapshot.branches || []).map((b) => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+    renderPatientAutocomplete('pharmacy-patient-ac', 'pharmacyPatientId', '');
+    const pharmAc = document.querySelector('#pharmacy-patient-ac');
+    pharmAc._rxBound = pharmAc._rxBound || pharmAc.addEventListener('patient-selected', () => renderPharmacyQueue(), false);
+    if (pharmBranch) pharmBranch._rxBound = pharmBranch._rxBound || pharmBranch.addEventListener('change', renderPharmacyQueue, false);
+    renderPharmacyQueue();
   document.querySelector('#patient-account-list').innerHTML = (patientAccounts.length ? patientAccounts : snapshot.patientAccounts || []).map((item) =>
     `<article><h3>${item.email}</h3><p>${item.status}</p><p>Expires ${item.activationTokenExpiresAt || 'n/a'} · used ${item.activationTokenUsedAt || 'never'}</p>${canManageStaff ? '<button data-resend="' + item.id + '">Resend invite</button><button data-disable-account="' + item.id + '">Disable</button>' : ''}</article>`
   ).join('') || '<p>No patient accounts yet.</p>';
@@ -2054,6 +2130,8 @@ document.querySelector('#audit-filter').addEventListener('submit', async (event)
 });
 
 document.addEventListener('click', async (event) => {
+  const chargeRxBtn = event.target.closest('[data-charge-rx]');
+  if (chargeRxBtn) { chargePrescription(chargeRxBtn.dataset.chargeRx); return; }
   const signBtn = event.target.closest('[data-sign]');
   const issueBtn = event.target.closest('[data-issue]');
   const issueInvoiceBtn = event.target.closest('[data-issue-invoice]');

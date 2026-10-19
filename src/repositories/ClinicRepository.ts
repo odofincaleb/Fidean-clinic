@@ -313,12 +313,25 @@ export interface ClinicRepository {
   createPrescription(input: PrescriptionInput): Promise<Prescription>;
   updatePrescription(prescriptionId: string, patch: PrescriptionPatch): Promise<Prescription>;
   issuePrescription(prescriptionId: string): Promise<Prescription>;
+  /** Charge a patient from an issued prescription's inventory items → creates an invoice
+   *  (stock NOT moved yet — deduction happens on payment approval). `items` is a map of
+   *  inventoryItemId → quantity to dispense now. Updates the prescription's backordered
+   *  quantities and status (dispensed / partially_dispensed). */
+  chargePrescription(
+    prescriptionId: string,
+    input: { branchId: string; items: { inventoryItemId: string; quantity: number }[] },
+  ): Promise<{ invoice: Invoice; prescription: Prescription }>;
 
   listInvoices(tenantId: string, filters?: { patientId?: string; status?: Invoice['status'] }): Promise<Invoice[]>;
   getInvoice(invoiceId: string): Promise<Invoice | undefined>;
   createInvoice(input: InvoiceInput): Promise<Invoice>;
   updateInvoice(invoiceId: string, patch: InvoicePatch): Promise<Invoice>;
   recordInvoicePayment(invoiceId: string, amountKobo: number): Promise<Invoice>;
+  /** Deduct stock for inventory-linked invoice lines that are approved (payment recorded).
+   *  Idempotent: lines already deducted are skipped. Called at payment-approval time. */
+  deductInvoiceInventory(invoiceId: string): Promise<Invoice>;
+  /** Reverse stock deductions for a voided invoice (restock). Idempotent. */
+  restockInvoiceInventory(invoiceId: string): Promise<Invoice>;
   voidInvoice(invoiceId: string): Promise<Invoice>;
 
   listPatientDocuments(tenantId: string, filters?: { patientId?: string; encounterId?: string }): Promise<PatientDocument[]>;

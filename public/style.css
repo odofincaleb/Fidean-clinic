@@ -405,6 +405,7 @@ button { border: 0; cursor: pointer; }
   grid-template-columns: 220px 1fr;
   gap: 0;
   min-height: 100vh;
+}
 .nav-heading {
   padding: 10px 12px 5px;
   color: #aaa6d2;

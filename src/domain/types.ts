@@ -265,6 +265,8 @@ export interface PrescriptionItem {
   frequency?: string;
   duration?: string;
   instructions?: string;
+  /** Inventory item this prescription maps to (optional — free-text meds have none). */
+  inventoryItemId?: string;
 }
 
 export interface Prescription {

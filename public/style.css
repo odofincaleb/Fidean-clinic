@@ -1038,3 +1038,19 @@ button { border: 0; cursor: pointer; }
 .modal-card label{display:block;margin-bottom:12px;font-weight:600;font-size:13px;color:var(--text-secondary)}
 .modal-card select,.modal-card input{width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px}
 .modal-card .card-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.modal-card textarea{width:100%;margin-top:4px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit}
+.modal-card .patient-ac .ac-input{width:100%}
+
+/* Consultation context panel */
+.consult-context{background:#f8f5ff;border:1px solid #e9e2f7;border-radius:12px;padding:12px 14px;margin:6px 0 10px;font-size:.9rem;line-height:1.7}
+.consult-context h4{margin:0 0 6px;color:var(--purple-strong);font-size:.85rem;text-transform:uppercase;letter-spacing:.4px}
+.consult-context div{margin:2px 0}
+
+/* Prescription inventory picker */
+.prescription-inv-results{position:relative;border:1px solid var(--border);border-radius:8px;background:#fff;max-height:180px;overflow:auto;z-index:10}
+.prescription-inv-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:.85rem}
+.prescription-inv-item:hover{background:#f5f0ff}
+
+/* Signed / locked consultation */
+.locked-note{display:inline-block;margin-top:6px;color:var(--text-tertiary);font-size:.75rem}
+.card-rich.is-editing{background:#fafafa}

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fidean Clinic SaaS</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%233c2dc4'/></svg>" />
-  <link rel="stylesheet" href="/style.css?v=58" />
+  <link rel="stylesheet" href="/style.css?v=59" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -207,7 +207,7 @@
           <button class="sidebar-item" data-tab="schedules"><span class="icon">📋</span>Schedules</button>
           <button class="sidebar-item" data-tab="reports"><span class="icon">📊</span>Reports</button>
           <div class="sidebar-section">Clinical</div>
-          <button class="sidebar-item" data-tab="encounters"><span class="icon">📝</span>Encounters</button>
+          <button class="sidebar-item" data-tab="encounters"><span class="icon">📝</span>Consultations</button>
           <button class="sidebar-item" data-tab="prescriptions"><span class="icon">💊</span>Prescriptions</button>
           <button class="sidebar-item" data-tab="documents"><span class="icon">📄</span>Documents</button>
           <div class="sidebar-section">Operations</div>
@@ -246,11 +246,11 @@
                 </div>
                 <div class="dash-card" id="dash-activity">
                   <div class="dash-card-header">
-                    <span class="dash-card-title">Recent Encounters</span>
+                    <span class="dash-card-title">Recent Consultations</span>
                     <span class="dash-badge" id="encounter-count">0</span>
                   </div>
                   <div class="dash-card-body" id="dash-activity-body">
-                    <p class="dash-empty">Loading encounters...</p>
+                    <p class="dash-empty">Loading consultations...</p>
                   </div>
                 </div>
               </div>
@@ -389,7 +389,7 @@
           <div class="detail-header" id="patient-detail-header"></div>
           <nav class="detail-tabs" id="patient-detail-tabs">
             <button class="detail-tab active" data-subtab="info">Info</button>
-            <button class="detail-tab" data-subtab="encounters">Encounters</button>
+            <button class="detail-tab" data-subtab="encounters">Consultations</button>
             <button class="detail-tab" data-subtab="prescriptions">Prescriptions</button>
             <button class="detail-tab" data-subtab="invoices">Invoices</button>
             <button class="detail-tab" data-subtab="documents">Documents</button>
@@ -532,18 +532,25 @@
               </div>
             </section>
       <section class="panel tab-panel" id="encounters">
-        <h2>Encounters</h2>
+        <h2>Consultations</h2>
         <form id="encounter-form" class="form">
           <label>Branch <select name="branchId" required></select></label>
           <label>Patient <div class="patient-ac" id="encounter-patient-ac"></div></label>
           <label>Doctor / Staff <select name="doctorMemberId" id="encounter-doctor-select"><option value="">Unassigned</option></select></label>
-          <label>Appointment <select name="appointmentId"><option value="">Walk-in / no appointment</option></select></label>
-          <input name="reason" placeholder="Reason" />
+          <label>Appointment <select name="appointmentId" id="encounter-appointment-select"><option value="">Walk-in / no appointment</option></select></label>
+          <div id="encounter-context" class="consult-context" hidden>
+            <h4>Patient context</h4>
+            <div class="consult-context-medhistory"><strong>Medical history:</strong> <span id="enc-context-mh">None on file</span></div>
+            <div class="consult-context-service"><strong>Current service:</strong> <span id="enc-context-service">—</span></div>
+            <div class="consult-context-prior"><strong>Prior consultations:</strong> <span id="enc-context-prior">0</span></div>
+            <div class="consult-context-prescriptions"><strong>Prior prescriptions:</strong> <span id="enc-context-rx">0</span></div>
+          </div>
+          <input name="reason" placeholder="Reason / presenting complaint" />
           <input name="diagnosis" placeholder="Diagnosis" />
           <input name="clinicalNotes" placeholder="Clinical notes" />
           <input name="bloodPressure" placeholder="BP" />
           <label>Temp (°C) <input name="temperatureC" type="number" step="0.1" placeholder="e.g. 37.2" /></label>
-          <button type="submit">Open encounter</button>
+          <button type="submit">Start consultation</button>
         </form>
         <div class="specialist-diagram-container" id="encounter-diagram">
           <div class="specialist-diagram-toggle">
@@ -583,17 +590,23 @@
         </div>
         <div id="referral-list" class="cards"></div>
         <div id="encounter-list" class="cards"></div>
+        <div class="notif-actions" style="margin-top:14px">
+          <button type="button" class="btn-outline" id="open-private-note-btn">📝 Send private note to a doctor</button>
+        </div>
       </section>
       <section class="panel tab-panel" id="prescriptions">
         <h2>Prescriptions</h2>
         <form id="prescription-form" class="form">
           <div class="patient-ac" id="prescription-patient-ac"></div>
-          <select name="encounterId"><option value="">No encounter (standalone)</option></select>
-          <input name="medication" placeholder="Medication" required />
+          <select name="encounterId"><option value="">No consultation (standalone)</option></select>
+          <input type="text" id="prescription-inv-picker" placeholder="Search inventory to prescribe (optional)…" autocomplete="off" />
+          <div id="prescription-inv-results" class="prescription-inv-results" hidden></div>
+          <input name="medication" id="prescription-medication" placeholder="Medication or item (type if not in inventory)" required />
           <input name="dosage" placeholder="Dosage" />
           <input name="frequency" placeholder="Frequency" />
           <input name="duration" placeholder="Duration" />
           <input name="instructions" placeholder="Instructions" />
+          <input type="hidden" name="inventoryItemId" id="prescription-inventory-item-id" value="" />
           <button type="submit">Save draft</button>
         </form>
         <div id="prescription-list" class="cards"></div>
@@ -606,7 +619,7 @@
           <label>HMO <select name="hmoInsuranceId" id="invoice-hmo-select"><option value="">No HMO</option></select></label>
           <label>HMO covers <span id="hmo-coverage-display" style="font-weight:700;color:#16a34a">₦0</span></label>
           <label>Appointment <select name="appointmentId"><option value="">No appointment</option></select></label>
-          <label>Encounter <select name="encounterId"><option value="">No encounter</option></select></label>
+          <label>Consultation <select name="encounterId" id="invoice-encounter-select"><option value="">No consultation</option></select></label>
           <label>Item / service <input name="description" placeholder="e.g. Consultation" required id="inv-desc" /></label>
           <label>Qty <input name="quantity" type="number" value="1" min="1" /></label>
           <label>Unit price (₦) <input name="unitPrice" type="number" value="0" min="0" placeholder="e.g. 5000" /></label>
@@ -639,7 +652,7 @@
         <h2>Documents</h2>
         <form id="document-form" class="form">
           <div class="patient-ac" id="document-patient-ac"></div>
-          <select name="encounterId"><option value="">No encounter</option></select>
+          <select name="encounterId"><option value="">No consultation</option></select>
           <input name="title" placeholder="Title" required />
           <select name="documentType">
             <option value="report">report</option>
@@ -955,7 +968,7 @@
     </article>
     <article class="card-rich" id="backup-card">
       <h3>💾 Data Backup</h3>
-      <p class="hint">Download your clinic data for record-keeping or migration. Owner only. Exports patients, appointments, encounters, invoices, prescriptions, services, HMOs, referrals, staff, schedules, inventory, documents and audit logs.</p>
+      <p class="hint">Download your clinic data for record-keeping or migration. Owner only. Exports patients, appointments, consultations, invoices, prescriptions, services, HMOs, referrals, staff, schedules, inventory, documents and audit logs.</p>
       <div class="form" style="display:flex;gap:10px;margin-top:8px">
         <button type="button" id="export-json-btn" class="tab" style="background:var(--purple-soft);color:var(--purple-strong);border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:800">Download JSON</button>
         <button type="button" id="export-csv-btn" class="tab" style="background:var(--purple-soft);color:var(--purple-strong);border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:800">Download CSV</button>
@@ -1044,13 +1057,35 @@
         <div id="patient-documents" class="cards"></div>
       </section>
     </div>
-    <footer style="text-align:right;padding:8px 16px;font-size:10px;color:#1e3a5f;border-top:1px solid rgba(0,0,0,.04);margin-top:16px">Fidean Clinic OS v0.9.1</footer>
+    <footer style="text-align:right;padding:8px 16px;font-size:10px;color:#1e3a5f;border-top:1px solid rgba(0,0,0,.04);margin-top:16px">Fidean Clinic OS v0.9.2</footer>
+    <!-- Private note modal (doctor-to-doctor reference with patient link + feedback) -->
+    <div class="modal-overlay" id="private-note-modal" hidden>
+      <div class="modal-card" style="max-width:520px">
+        <h3 style="margin-top:0">Send private note</h3>
+        <p class="hint" style="margin:0 0 10px">Leave a private reference for another doctor. They'll receive it as a message with a link to view the patient record and can reply with feedback.</p>
+        <div class="form" style="grid-template-columns:1fr">
+          <label>Recipient doctor
+            <select id="pn-recipient-select" class="edit-input"><option value="">Select doctor...</option></select>
+          </label>
+          <label>Patient (optional — links the note to the record)
+            <div class="patient-ac" id="pn-patient-ac"></div>
+          </label>
+          <label>Note
+            <textarea id="pn-body" rows="4" placeholder="Write your private note / reference..."></textarea>
+          </label>
+        </div>
+        <div class="notif-actions" style="margin-top:10px;text-align:right">
+          <button type="button" class="btn-outline" id="pn-cancel">Cancel</button>
+          <button type="button" class="btn" id="pn-send">Send note</button>
+        </div>
+      </div>
+    </div>
   </main>
   <div class="success-toast" id="success-toast" hidden role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="/specialist-charts.js?v=fix-v10"></script>
   <script src="/api-base.js"></script>
-  <script src="/app.js?v=rbac-v33" type="module"></script>
+  <script src="/app.js?v=cons-v01" type="module"></script>
 <div id="hmo-modal" class="modal-overlay" hidden>
   <div class="modal-card">
     <h3>Apply HMO Coverage</h3>

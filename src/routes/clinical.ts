@@ -182,6 +182,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
         frequency: z.string().optional(),
         duration: z.string().optional(),
         instructions: z.string().optional(),
+        inventoryItemId: z.string().optional(),
       })).min(1),
     }).parse(request.body);
     if (input.tenantId !== auth.tenantId) throw httpError('FORBIDDEN', 403);
@@ -216,6 +217,7 @@ export function registerClinicalRoutes(app: FastifyInstance, repo: ClinicReposit
         frequency: z.string().optional(),
         duration: z.string().optional(),
         instructions: z.string().optional(),
+        inventoryItemId: z.string().optional(),
       })).min(1).optional(),
     }).parse(request.body);
     return { ok: true, prescription: await repo.updatePrescription(params.prescriptionId, patch) };

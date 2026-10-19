@@ -255,6 +255,30 @@ function setupAutocomplete(textInput, container) {
   textInput.addEventListener('blur', () => setTimeout(() => { dropdown.hidden = true; }, 200));
 }
 
+// ── Consultation context: shows the selected patient's medical history, the current
+//    appointment/service, and how many prior consultations/prescriptions they have.
+function refreshEncounterContext() {
+  const panel = document.querySelector('#encounter-context');
+  if (!panel) return;
+  const pidField = document.querySelector('#encounter-patient-ac .ac-hidden');
+  const patientId = pidField ? pidField.value : '';
+  const apptId = document.querySelector('#encounter-appointment-select')?.value || '';
+  const patient = patientId ? (snapshot.patients || []).find(p => p.id === patientId) : null;
+  const appt = apptId ? (snapshot.appointments || []).find(a => a.id === apptId) : null;
+  const priorEncs = patientId ? (snapshot.encounters || []).filter(e => e.patientId === patientId && e.id !== currentEncounterEditId) : [];
+  const priorRx = patientId ? (snapshot.prescriptions || []).filter(p => p.patientId === patientId) : [];
+  const mh = document.querySelector('#enc-context-mh');
+  if (mh) mh.textContent = (patient && patient.medicalHistory) ? patient.medicalHistory : 'None on file';
+  const svc = document.querySelector('#enc-context-service');
+  if (svc) svc.textContent = appt ? (appt.serviceName || 'Appointment') : 'Walk-in / no appointment';
+  const pp = document.querySelector('#enc-context-prior');
+  if (pp) pp.textContent = String(priorEncs.length);
+  const prx = document.querySelector('#enc-context-rx');
+  if (prx) prx.textContent = String(priorRx.length);
+  panel.hidden = !patientId;
+}
+let currentEncounterEditId = '';
+
 function syncPatientAutocompletes() {
   ['encounter-patient-ac', 'prescription-patient-ac', 'invoice-patient-ac', 'document-patient-ac', 'patient-invite-ac', 'appointment-patient-ac'].forEach(id => {
     const container = document.querySelector(`#${id}`);
@@ -504,7 +528,7 @@ function renderDashboard() {
   const encounters = (snapshot.encounters || []).slice(-5).reverse();
   document.querySelector('#encounter-count').textContent = encounters.length;
   if (encounters.length === 0) {
-    document.querySelector('#dash-activity-body').innerHTML = '<p class="dash-empty">No recent encounters.</p>';
+    document.querySelector('#dash-activity-body').innerHTML = '<p class="dash-empty">No recent consultations.</p>';
   } else {
     document.querySelector('#dash-activity-body').innerHTML = encounters.map(e => {
       const patient = snapshot.patients.find(p => p.id === e.patientId);
@@ -512,8 +536,8 @@ function renderDashboard() {
       return `<div class="dash-activity-item">
         <span class="dash-activity-dot"></span>
         <div>
-          <strong>${e.reason || 'Encounter'}</strong>
-          <p>${patient?.firstName || 'Patient'} · ${e.status} · ${date}</p>
+          <strong>${e.reason || 'Consultation'}</strong>
+          <p>${patient?.firstName || 'Patient'} · ${e.status === 'signed' ? 'signed' : 'unsigned'} · ${date}</p>
           ${e.diagnosis ? `<small>${e.diagnosis}</small>` : ''}
         </div>
       </div>`;
@@ -660,12 +684,12 @@ function render() {
     const hasSpecialist = item.specialistData && item.specialistData.type && item.specialistData.findings && Object.keys(item.specialistData.findings).length;
     const doctor = (snapshot.members || []).find(m => m.id === item.doctorMemberId);
     const doctorName = doctor ? (doctor.displayName || doctor.email || '') : '';
-    return `<article class="card-rich card-clickable" data-encounter-id="${item.id}"><h3>${item.reason || 'Encounter'}</h3><p class="card-meta"><span class="badge badge-${item.status}">${item.status}</span>${doctorName ? ' · <span class="badge badge-active">' + esc(doctorName) + '</span>' : ''} · ${item.diagnosis || "No diagnosis"}${item.bloodPressure ? ' · BP ' + item.bloodPressure : ''}${item.temperatureC ? ' · ' + item.temperatureC + '°C' : ''}${hasSpecialist ? ' · <span class="specialist-badge">Chart</span>' : ''}${hasSpecialist ? ' <span class="dash-finding-note">' + Object.values(item.specialistData.findings).map(function(f){return f.note||''}).filter(Boolean).join('; ') + '</span>' : ''}</p>${item.status !== 'signed' && canWriteEncounter ? '<button data-sign="' + item.id + '">Sign</button>' : ''}</article>`;
+    return `<article class="card-rich card-clickable" data-encounter-id="${item.id}"><h3>${item.reason || 'Consultation'}</h3><p class="card-meta"><span class="badge ${item.status === 'signed' ? 'badge-active' : ''}">${item.status === 'signed' ? 'signed' : 'unsigned'}</span>${doctorName ? ' · <span class="badge badge-active">' + esc(doctorName) + '</span>' : ''} · ${item.diagnosis || "No diagnosis"}${item.bloodPressure ? ' · BP ' + item.bloodPressure : ''}${item.temperatureC ? ' · ' + item.temperatureC + '°C' : ''}${hasSpecialist ? ' · <span class="specialist-badge">Chart</span>' : ''}${hasSpecialist ? ' <span class="dash-finding-note">' + Object.values(item.specialistData.findings).map(function(f){return f.note||''}).filter(Boolean).join('; ') + '</span>' : ''}</p>${item.status !== 'signed' && canWriteEncounter ? '<button data-sign="' + item.id + '">Sign as complete</button>' : item.status === 'signed' ? '<small class="locked-note">🔒 Signed — read-only</small>' : ''}</article>`;
   }).join('');
   document.querySelector('#prescription-list').innerHTML = (snapshot.prescriptions || []).map((item) => {
     const patient = snapshot.patients.find(p => p.id === item.patientId);
     const dateStr = item.issuedAt ? new Date(item.issuedAt).toLocaleDateString() : (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '');
-    return `<article class="card-rich"><h3>${item.items?.[0]?.medication || 'Prescription'}</h3><p class="card-meta">${item.status}${item.items?.[0]?.dosage ? ' · ' + item.items[0].dosage : ''}${patient ? ' · ' + patient.firstName + (patient.lastName || '') : ''}${dateStr ? ' · ' + dateStr : ''}</p>${item.status === 'draft' && canManagePrescriptions ? '<button data-issue="' + item.id + '">Issue</button>' : ''}</article>`;
+    return `<article class="card-rich"><h3>${item.items?.[0]?.medication || 'Prescription'}</h3><p class="card-meta">${item.status === 'issued' ? 'issued' : item.status}${item.items?.[0]?.inventoryItemId ? ' · <span class="badge badge-active">inventory</span>' : ''}${item.items?.[0]?.dosage ? ' · ' + item.items[0].dosage : ''}${patient ? ' · ' + patient.firstName + (patient.lastName || '') : ''}${dateStr ? ' · ' + dateStr : ''}</p>${item.status === 'draft' && canManagePrescriptions ? '<button data-issue="' + item.id + '">Issue prescription</button>' : ''}</article>`;
   }).join('');
   document.querySelector('#invoice-list').innerHTML = (snapshot.invoices || []).map((item) => {
     const balance = item.balanceKobo ?? Math.max((item.totalKobo || 0) - (item.amountPaidKobo || 0), 0);
@@ -679,7 +703,7 @@ function render() {
   const branchOptions = snapshot.branches.map((branch) => option(branch.id, branch.name)).join('');
     const doctorOptions = snapshot.members.filter((member) => isBookableDoc(member)).map((member) => option(member.id, docLabel(member))).join('');
     const apptOptions = `<option value="">None</option>` + snapshot.appointments.map((item) => option(item.id, item.serviceName)).join('');
-    const encounterOptions = `<option value="">No encounter</option>` + snapshot.encounters.map((item) => option(item.id, item.reason || item.id)).join('');
+    const encounterOptions = `<option value="">No consultation</option>` + snapshot.encounters.map((item) => option(item.id, item.reason || item.id)).join('');
     document.querySelector('#appointment-form [name=branchId]').innerHTML = branchOptions;
     document.querySelector('#appointment-form [name=doctorMemberId]').innerHTML = `<option value="">No doctor</option>${doctorOptions}`;
     const serviceOptions = snapshot.services.map((item) => option(item.id, `${item.name} (${item.durationMinutes}min · ₦${item.priceKobo.toLocaleString()})`)).join('');
@@ -702,7 +726,7 @@ function render() {
     document.querySelector('#prescription-form [name=encounterId]').innerHTML = encounterOptions;
     document.querySelector('#invoice-form [name=branchId]').innerHTML = branchOptions;
     document.querySelector('#invoice-form [name=appointmentId]').innerHTML = apptOptions;
-    document.querySelector('#invoice-form [name=encounterId]').innerHTML = `<option value="">No encounter</option>${encounterOptions}`;
+    document.querySelector('#invoice-form [name=encounterId]').innerHTML = `<option value="">No consultation</option>${encounterOptions}`;
     // Auto-fill invoice line items when appointment is selected
     const apptSelect = document.querySelector('#invoice-form [name=appointmentId]');
     apptSelect._invoiceBound = apptSelect._invoiceBound || (apptSelect.addEventListener('change', () => {
@@ -740,8 +764,8 @@ function render() {
       ).join('');
       const encSel = document.querySelector('#invoice-form [name=encounterId]');
       const patientEncs = (snapshot.encounters || []).filter(e => e.patientId === patientId);
-      encSel.innerHTML = '<option value="">No encounter</option>' + patientEncs.map(e =>
-        `<option value="${e.id}">${e.reason || 'Encounter'} · ${new Date(e.createdAt).toLocaleDateString()}</option>`
+      encSel.innerHTML = '<option value="">No consultation</option>' + patientEncs.map(e =>
+        `<option value="${e.id}">${e.reason || 'Consultation'} · ${new Date(e.createdAt).toLocaleDateString()}</option>`
       ).join('');
     }), true);
     // Calculate HMO coverage when HMO is selected
@@ -799,12 +823,20 @@ function render() {
     document.querySelector('#invoice-form [name="quantity"]').addEventListener('input', updateInvoiceTotals);
     document.querySelector('#invoice-hmo-select')?.addEventListener('change', updateInvoiceTotals);
     updateInvoiceTotals();
-    document.querySelector('#document-form [name=encounterId]').innerHTML = `<option value="">No encounter</option>${encounterOptions}`;
+    document.querySelector('#document-form [name=encounterId]').innerHTML = `<option value="">No consultation</option>${encounterOptions}`;
     renderPatientAutocomplete('appointment-patient-ac', 'patientId', '');
     renderPatientAutocomplete('invoice-patient-ac', 'patientId', '');
     renderPatientAutocomplete('appointment-patient-ac', 'patientId', '');
     setupInventoryAutocomplete(); // moved below refresh
     renderPatientAutocomplete('encounter-patient-ac', 'patientId', '');
+    // ── Consultation context panel: patient medical history + current service + prior
+    //    consultations & prescriptions. Refreshes when the doctor picks a patient or
+    //    an appointment for this consultation.
+    const encAc = document.querySelector('#encounter-patient-ac');
+    encAc._ctxBound = encAc._ctxBound || (encAc.addEventListener('patient-selected', () => refreshEncounterContext(), { once: false }));
+    const encApptSel = document.querySelector('#encounter-appointment-select');
+    encApptSel._ctxBound = encApptSel._ctxBound || (encApptSel.addEventListener('change', () => refreshEncounterContext(), { once: false }));
+    refreshEncounterContext();
     renderPatientAutocomplete('prescription-patient-ac', 'patientId', '');
     renderPatientAutocomplete('invoice-patient-ac', 'patientId', '');
     renderPatientAutocomplete('document-patient-ac', 'patientId', '');
@@ -836,7 +868,16 @@ function render() {
     const other = (snapshot.members || []).find(m => m.id === (item.senderMemberId === currentMemberId ? item.recipientMemberId : item.senderMemberId));
     const isSent = item.senderMemberId === currentMemberId;
     const otherName = other ? (other.displayName || other.email) : '';
-    return `<div class="message-thread${!item.readAt && !isSent ? ' msg-unread' : ''}"><div class="${isSent ? 'msg-sent' : 'msg-received'}"><strong>${isSent ? 'You' : otherName}</strong><p>${escapeHtml(item.body)}</p><p class="msg-meta">${item.subject ? safeText(item.subject) : ''} · ${new Date(item.createdAt).toLocaleString()}${item.readAt ? ' · Read' : ''}</p></div></div>`;
+    const mPatient = item.patientId ? (snapshot.patients || []).find(p => p.id === item.patientId) : null;
+    const mPatientName = mPatient ? `${mPatient.firstName} ${mPatient.lastName || ''}`.trim() : '';
+    const patientLink = item.patientId
+      ? `<button class="btn-outline btn-sm" data-msg-patient="${item.id}" data-patient-id="${item.patientId}">👁 View patient record</button>`
+      : '';
+    // Reply/feedback is only for received private notes (the other doctor can reply).
+    const replyBtn = (!isSent && item.patientId)
+      ? `<button class="btn-outline-success btn-sm" data-msg-reply="${item.id}">↩ Reply / feedback</button>`
+      : '';
+    return `<div class="message-thread${!item.readAt && !isSent ? ' msg-unread' : ''}"><div class="${isSent ? 'msg-sent' : 'msg-received'}"><strong>${isSent ? 'You' : otherName}</strong>${mPatientName ? ' · <span class="badge badge-active">' + escapeHtml(mPatientName) + '</span>' : ''}<p>${escapeHtml(item.body)}</p><p class="msg-meta">${item.subject ? safeText(item.subject) : ''} · ${new Date(item.createdAt).toLocaleString()}${item.readAt ? ' · Read' : ''}</p>${patientLink} ${replyBtn}</div></div>`;
   }).join('') || '<p class="detail-empty">No messages yet.</p>';
   // Unread-incoming notification badge on the Messaging tab (clears on open).
   updateMsgUnreadBadge((staffMessages || []).filter(m => m.recipientMemberId === currentMemberId && !m.readAt).length);
@@ -1802,6 +1843,8 @@ document.querySelector('#encounter-form').addEventListener('submit', async (even
 document.querySelector('#prescription-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const data = formDataWithAc(event.target);
+  // Inventory-linked item is sent as inventoryItemId on the prescription item.
+  const invItemId = document.querySelector('#prescription-inventory-item-id')?.value || undefined;
   const result = await submitOrQueue(event.target, {
     entityType: 'prescription',
     endpoint: '/api/prescriptions',
@@ -1810,10 +1853,45 @@ document.querySelector('#prescription-form').addEventListener('submit', async (e
       encounterId: data.encounterId || undefined,
       patientId: data.patientId || undefined,
       notes: data.instructions || undefined,
-      items: [{ medication: data.medication, dosage: data.dosage, frequency: data.frequency, duration: data.duration, instructions: data.instructions }],
+      items: [{ medication: data.medication, dosage: data.dosage, frequency: data.frequency, duration: data.duration, instructions: data.instructions, inventoryItemId: invItemId }],
     },
   });
-  if (result && result.ok) showSuccessToast('Prescription saved.');
+  if (result && result.ok) {
+    showSuccessToast('Prescription saved.');
+    document.querySelector('#prescription-inv-picker').value = '';
+    document.querySelector('#prescription-inv-results').hidden = true;
+    document.querySelector('#prescription-inventory-item-id').value = '';
+  }
+});
+
+// ── Prescription: pick an in-inventory item (auto-fills medication + links the item).
+//    Free-text still works if the item is not in inventory (inventoryItemId stays empty).
+document.querySelector('#prescription-inv-picker')?.addEventListener('input', async () => {
+  const inp = document.querySelector('#prescription-inv-picker');
+  const results = document.querySelector('#prescription-inv-results');
+  const q = inp.value.trim().toLowerCase();
+  if (!q) { results.hidden = true; results.innerHTML = ''; return; }
+  if (_invItems.length === 0) {
+    try {
+      const d = await (await fetch('/api/inventory', { headers: headers() })).json();
+      if (d.ok) _invItems = d.items || [];
+    } catch (_) {}
+  }
+  const matches = _invItems.filter((item) => item.status === 'active' && (item.name || '').toLowerCase().includes(q)).slice(0, 8);
+  results.innerHTML = matches.map((item) =>
+    `<div class="prescription-inv-item" data-inv-id="${item.id}" data-inv-name="${escapeHtml(item.name)}" data-inv-stock="${item.currentStock}">${escapeHtml(item.name)} <small>· stock ${item.currentStock}${item.unit ? ' ' + escapeHtml(item.unit) : ''}</small></div>`
+  ).join('');
+  results.hidden = matches.length === 0;
+});
+
+document.querySelector('#prescription-inv-results')?.addEventListener('click', (e) => {
+  const row = e.target.closest('.prescription-inv-item');
+  if (!row) return;
+  document.querySelector('#prescription-medication').value = row.dataset.invName;
+  document.querySelector('#prescription-inventory-item-id').value = row.dataset.invId;
+  document.querySelector('#prescription-inv-picker').value = row.dataset.invName;
+  document.querySelector('#prescription-inv-results').innerHTML = '';
+  document.querySelector('#prescription-inv-results').hidden = true;
 });
 
 document.querySelector('#invoice-form').addEventListener('submit', async (event) => {
@@ -2308,9 +2386,9 @@ function renderPatientSubTab(subtab, patient) {
 
   if (subtab === 'encounters') {
     body.innerHTML = items.length === 0 || items[0]?.empty
-      ? '<p class="detail-empty">No encounters for this patient.</p>'
+      ? '<p class="detail-empty">No consultations for this patient.</p>'
       : '<div class="detail-sub-list">' + items.map(e =>
-        `<div class="detail-sub-item"><h4>${e.reason || 'Encounter'}</h4><p>${e.status}${e.diagnosis ? ' · ' + e.diagnosis : ''}</p><small>${new Date(e.createdAt).toLocaleString()}</small></div>`
+        `<div class="detail-sub-item"><h4>${e.reason || 'Consultation'}</h4><p>${e.status === 'signed' ? 'signed' : 'unsigned'}${e.diagnosis ? ' · ' + e.diagnosis : ''}</p><small>${new Date(e.createdAt).toLocaleString()}</small></div>`
       ).join('') + '</div>';
   } else if (subtab === 'prescriptions') {
     body.innerHTML = items.length === 0 || items[0]?.empty
@@ -2569,6 +2647,10 @@ document.addEventListener('click', async (e) => {
   if (encounterCard && !e.target.closest('[data-save-encounter]') && !e.target.closest('[data-cancel-encounter]') && !e.target.closest('[data-delete-encounter]') && !e.target.closest('[data-sign]')) {
     const enc = (snapshot.encounters || []).find((s) => s.id === encounterCard.dataset.encounterId);
     if (!enc) return;
+    if (enc.status === 'signed') {
+      showErrorToast('This consultation is signed and read-only.');
+      return;
+    }
     const prev = encounterCard.innerHTML;
     encounterCard.dataset.prevHtml = prev;
     encounterCard.classList.add('is-editing');
@@ -2596,7 +2678,7 @@ document.addEventListener('click', async (e) => {
     if (data.temperatureC) data.temperatureC = Number(data.temperatureC);
     await fetch(`/api/encounters/${saveEncounter.dataset.saveEncounter}`, { method: 'PATCH', headers: headers(), body: JSON.stringify(data) });
     await refresh();
-    showSuccessToast('Encounter updated.');
+    showSuccessToast('Consultation updated.');
     return;
   }
 
@@ -2611,10 +2693,10 @@ document.addEventListener('click', async (e) => {
 
   const deleteEncounter = e.target.closest('[data-delete-encounter]');
   if (deleteEncounter) {
-    if (!confirm('Delete this encounter?')) return;
+    if (!confirm('Delete this consultation?')) return;
     await fetch(`/api/encounters/${deleteEncounter.dataset.deleteEncounter}`, { method: 'DELETE', headers: headers() });
     await refresh();
-    showSuccessToast('Encounter deleted.');
+    showSuccessToast('Consultation deleted.');
     return;
   }
 
@@ -2846,7 +2928,60 @@ document.querySelector('#staff-message-form')?.addEventListener('submit', async 
   }
 });
 
-/* ── Broadcast (WhatsApp / SMS) ── */
+/* ── Private note (doctor-to-doctor reference) + patient record link + feedback reply ── */
+function openPrivateNote(patientId) {
+  const modal = document.querySelector('#private-note-modal');
+  if (!modal) return;
+  modal.style.cssText = 'position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;background:rgba(0,0,0,.7)!important;z-index:99999!important;display:flex!important;align-items:center!important;justify-content:center!important';
+  const card = modal.querySelector('.modal-card');
+  card.style.cssText = 'background:#fff!important;border-radius:12px;padding:24px;min-width:340px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,.2);position:relative;z-index:100000';
+  // Recipient doctors (exclude self)
+  const sel = document.querySelector('#pn-recipient-select');
+  sel.innerHTML = '<option value="">Select doctor...</option>' + (snapshot.members || [])
+    .filter(m => m.id !== currentMemberId && ['doctor','radiologist','therapist','lab_technician','admin','owner'].includes(m.role))
+    .map(m => `<option value="${m.id}">${escapeHtml(m.displayName || m.email)}</option>`).join('');
+  document.querySelector('#pn-body').value = '';
+  renderPatientAutocomplete('pn-patient-ac', 'patientId', patientId || '');
+}
+document.querySelector('#open-private-note-btn')?.addEventListener('click', () => openPrivateNote(''));
+document.querySelector('#pn-cancel')?.addEventListener('click', () => {
+  document.querySelector('#private-note-modal').style.cssText = 'display:none!important';
+});
+document.querySelector('#pn-send')?.addEventListener('click', async () => {
+  const recipientMemberId = document.querySelector('#pn-recipient-select').value;
+  const patientId = document.querySelector('#pn-patient-ac .ac-hidden')?.value || undefined;
+  const body = document.querySelector('#pn-body').value.trim();
+  if (!recipientMemberId) { showErrorToast('Pick a recipient doctor.'); return; }
+  if (!body) { showErrorToast('Write a note.'); return; }
+  const payload = { recipientMemberId, body, patientId };
+  if (patientId) payload.subject = 'Private note — patient reference';
+  const res = await fetch('/api/staff-messages', { method: 'POST', headers: headers(), body: JSON.stringify(payload) });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok || !d.ok) { showErrorToast(d.error || 'Failed to send note'); return; }
+  document.querySelector('#private-note-modal').style.cssText = 'display:none!important';
+  showSuccessToast('Private note sent.');
+  refresh();
+});
+
+// View patient record from a message / reply with feedback
+document.querySelector('#staff-message-list')?.addEventListener('click', async (e) => {
+  const viewBtn = e.target.closest('[data-msg-patient]');
+  if (viewBtn) {
+    const pid = viewBtn.dataset.patientId;
+    if (pid) { renderPatientDetail(pid); return; }
+  }
+  const replyBtn = e.target.closest('[data-msg-reply]');
+  if (replyBtn) {
+    const msg = (staffMessages || []).find(m => m.id === replyBtn.dataset.msgReply);
+    if (!msg) return;
+    openPrivateNote(msg.patientId || '');
+    // Pre-fill recipient to the original sender for feedback.
+    document.querySelector('#pn-recipient-select').value = msg.senderMemberId || '';
+    document.querySelector('#pn-body').placeholder = 'Reply / feedback to sender...';
+  }
+});
+
+/* Broadcast (WhatsApp / SMS) */
 function broadcastCostPerMsg(channel) {
     return channel === 'whatsapp'
     ? (currentSettings?.whatsappCostPerMsg ?? 80)

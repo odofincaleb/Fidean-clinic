@@ -94,6 +94,30 @@ describe('Phase 3A clinical workflow', () => {
     expect(issued.status).toBe('issued');
   });
 
+  it('Prescription item can reference an inventory item (no auto-deduct)', async () => {
+    const { repo, tenant, lekki, patient } = await clinic();
+    const item = await repo.createInventoryItem({
+      tenantId: tenant.id,
+      name: 'Paracetamol 500mg',
+      currentStock: 40,
+      reorderLevel: 5,
+      unitCostKobo: 500,
+      sellingPriceKobo: 1000,
+    });
+    const encounter = await repo.createEncounter({ tenantId: tenant.id, branchId: lekki.id, patientId: patient.id });
+    const prescription = await repo.createPrescription({
+      tenantId: tenant.id,
+      encounterId: encounter.id,
+      items: [{ medication: 'Paracetamol 500mg', dosage: '1 tablet', inventoryItemId: item.id }],
+    });
+    expect(prescription.items[0].inventoryItemId).toBe(item.id);
+    // Issuing the prescription is a clinical record — it must NOT deduct stock.
+    const issued = await repo.issuePrescription(prescription.id);
+    expect(issued.status).toBe('issued');
+    const stockAfter = (await repo.listInventoryItems(tenant.id)).find((x) => x.id === item.id);
+    expect(stockAfter?.currentStock).toBe(40);
+  });
+
   it('Invoice totals are computed correctly', async () => {
     const { repo, tenant, lekki, patient } = await clinic();
     const invoice = await repo.createInvoice({

@@ -141,12 +141,7 @@ export function registerPaymentsRoutes(app: FastifyInstance, repo: ClinicReposit
       verifiedAt: new Date().toISOString(),
     });
 
-    const newPaid = invoice.amountPaidKobo + body.amountKobo;
-    const newStatus = newPaid >= invoice.totalKobo ? 'paid' : 'part_paid';
-    const updated = await repo.updateInvoice(body.invoiceId, { amountPaidKobo: newPaid, status: newStatus });
-    // Payment approved → move stock out for inventory-linked lines.
-    if (newStatus === 'paid' || newStatus === 'part_paid') await repo.deductInvoiceInventory(body.invoiceId);
-
+    const updated = await repo.recordInvoicePayment(body.invoiceId, body.amountKobo);
     return { ok: true, transaction: tx, invoice: updated };
   });
 
